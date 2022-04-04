@@ -54,8 +54,15 @@ class TcpServer(BaseServer):
         logger.debug("server.create() called.")
         type_arg = message["type"]
         name = message["name"]
+        
+        synchronizer = Synchronizer()
 
-        synchronizer = Synchronizer(type_arg = type_arg, name = name)
+        if "keyword_arguments" in message:
+            keyword_arguments = message["keyword_arguments"]
+            synchronizer.create(type_arg, name, **keyword_arguments)
+        else:
+            synchronizer.create(type_arg, name)
+        
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
         self.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
 

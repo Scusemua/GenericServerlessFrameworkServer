@@ -21,7 +21,7 @@ class Synchronizer(object):
 
     #@Pyro4.oneway
     #def init(self, synchronizer_class_name = None, synchronizer_object_name = None, **kwargs):
-    def init(self, synchronizer_class_name, synchronizer_object_name, **kwargs):
+    def create(self, synchronizer_class_name, synchronizer_object_name, **kwargs):
         # where init call by Client is init(“Barrier”,”b”,[‘n’,2]): and kwargs passed to Barrier.init
         if not synchronizer_class_name in self.synchronizers:
             print("Error: invalid synchronizer class name.")
@@ -50,7 +50,7 @@ class Synchronizer(object):
         #self._synchronizer.initX(kwargs)
         self._synchronizer.init(**kwargs)  #2
         # where Barrier init is: init(**kwargs): if len(kwargs) not == 1
-	# print(“Error: Barrier init has too many argos”) self._n = kwargs[‘n’]
+	    # print(“Error: Barrier init has too many argos”) self._n = kwargs[‘n’]
 
         print ("Called _synchronizer init")
         return 0
