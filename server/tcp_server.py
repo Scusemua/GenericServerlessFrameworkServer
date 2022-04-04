@@ -72,7 +72,7 @@ class TcpServer(BaseServer):
         synchronizer_name = self._get_synchronizer_name(obj_type = None, obj_name = obj_name)
         synchronizer = self.synchronizers[synchronizer_name].synchronize(method_name = method_name)
 
-    async def natpunch_server_loop(self, websocket, path):
+    async def server_loop(self, websocket, path):
         """
             This is the main server loop for the NAT Punching coordinator.
 
@@ -82,7 +82,7 @@ class TcpServer(BaseServer):
         while True:
             try:
                 # Listen for pairing names.
-                msg_json = await websocket.recv()
+                msg_json = await websocket.recv() # TODO: Possibly needs its own thread to handle this.
 
                 message = ujson.loads(msg_json)
 
