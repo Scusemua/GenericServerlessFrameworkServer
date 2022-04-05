@@ -85,7 +85,7 @@ class Synchronizer(object):
         # note: sgnal and exit not used for fast_X and if caled always
         # fast = false so no check fast flag.
 
-        ID = kwargs["ID"]
+        ID_arg = kwargs["ID"]
         #program_counter = kwargs["program_counter"]
         #cb = kwargs["cb"]
         #first = kwargs["first"]
@@ -93,7 +93,7 @@ class Synchronizer(object):
         program_counter = state._pc
         state.pc = 10
  
-        print("starting remote method " + str(method_name) + ", ID is: " + ID + " PC is " + str(program_counter))
+        print("starting remote method " + str(method_name) + ", ID is: " + ID_arg + " PC is " + str(program_counter))
 	# note: most examples are getattr(instance, name) but we have a class
 	# so we get an attribute of class (getattr(class, name) and we need
 	# an instance to call it on so method(instance)(parm)
@@ -143,11 +143,11 @@ class Synchronizer(object):
             # between this threads try_waitb and wait_b.
 
             # call the try-method
-            myPythonThreadName = "Try_callerThread"+str(ID)
+            myPythonThreadName = "Try_callerThread"+str(ID_arg)
             restart, returnValue = self.doMethodCall(self.threadID, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
             
-            print("Try_callerThread " + str(ID) + " restart " + str(restart))
-            print("Try_callerThread " + str(ID) + " returnValue " + str(returnValue))
+            print("Try_callerThread " + str(ID_arg) + " restart " + str(restart))
+            print("Try_callerThread " + str(ID_arg) + " returnValue " + str(returnValue))
             print("Try_callerThread Synchronizer successfully called synchronizer try-method and acquire exited. ")
                   
             if returnValue:  # base_name blocks on conditionVariable
@@ -167,11 +167,11 @@ class Synchronizer(object):
                     print("Pyro Traceback:")
                     print("".join(Pyro4.util.getPyroTraceback()))
                     print("End Traceback")
-                myPythonThreadName = "BaseNameTryBlocking_callerThread"+str(ID)
+                myPythonThreadName = "BaseNameTryBlocking_callerThread"+str(ID_arg)
                 restart, returnValue = self.doMethodCall(self.threadID, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
 
-                print("BaseNameTryBlocking_callerThread " + str(ID) + " restart " + str(restart))
-                print("BaseNameTryBlocking_callerThread " + str(ID) + " returnValue " + str(returnValue))
+                print("BaseNameTryBlocking_callerThread " + str(ID_arg) + " restart " + str(restart))
+                print("BaseNameTryBlocking_callerThread " + str(ID_arg) + " returnValue " + str(returnValue))
                 print("BaseNameTryBlocking_callerThread Synchronizer successfully called synchronizer baseName-method and acquire exited. ")
 
                 # check and maybe do restart
@@ -186,8 +186,8 @@ class Synchronizer(object):
                     print("End Traceback")
                 myPythonThreadName = "BaseNameTryNoBlocking_callerThreadTry"+str(self.threadID)
                 restart, returnValue = self.doMethodCall(self.threadID, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
-                print("BaseNameTryNoBlocking_callerThreadTry " + str(ID) + " restart " + str(restart))
-                print("BaseNameTryNoBlocking_callerThreadTry " + str(ID) + " returnValue " + str(returnValue))
+                print("BaseNameTryNoBlocking_callerThreadTry " + str(ID_arg) + " restart " + str(restart))
+                print("BaseNameTryNoBlocking_callerThreadTry " + str(ID_arg) + " returnValue " + str(returnValue))
                 print("BaseNameTryNoBlocking_callerThreadTry Synchronizer successfully called synchronizer baseName-method and acquire exited. ")
 
                 #rhc: Q: for fan-in send all fan-in outputs/inputs? Note: can execute fan-in task on server.
@@ -207,8 +207,8 @@ class Synchronizer(object):
             #rhc      else:
             #rhc            threading.current_thread()._restart = False
 
-            print("caller thread " + str(ID) + " restart " + str(restart))
-            print("caller thread " + str(ID) + " returnValue " + str(returnValue))
+            print("caller thread " + str(ID_arg) + " restart " + str(restart))
+            print("caller thread " + str(ID_arg) + " returnValue " + str(returnValue))
             print(" Synchronizer successfully called synchronizer method and acquire exited. ")
 
             #if restart:

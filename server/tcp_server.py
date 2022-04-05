@@ -3,6 +3,8 @@ from multiprocessing import synchronize
 from re import A
 import ujson
 import websockets
+import cloudpickle 
+import base64 
 
 from base_server import BaseServer
 from synchronizer import Synchronizer
@@ -77,9 +79,9 @@ class TcpServer(BaseServer):
         logger.debug("server.synchronize() called.")
         obj_name = message['name']
         method_name = message['method_name']
-        state = message['state']
+        state = cloudpickle.loads(base64.b64decode(message['state'])) 
 
-        synchronizer_name = self._get_synchronizer_name(obj_type = None, obj_name = obj_name)
+        synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
         synchronizer = self.synchronizers[synchronizer_name]
         
         if "keyword_arguments" in message:
@@ -104,11 +106,7 @@ class TcpServer(BaseServer):
 
                 action = message.get("op", None)
 
-                try:
-                    await self.action_handlers[action](message = message) #websocket = websocket, 
-                except Exception as ex:
-                    logger.error("Encountered error while executing operation \"%s\" on behalf of client." % ex)
-                    logger.error(str(ex))
+                await self.action_handlers[action](message = message) #websocket = websocket, 
             except websockets.ConnectionClosed:
                 break
 
