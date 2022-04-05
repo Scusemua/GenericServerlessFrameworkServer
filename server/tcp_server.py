@@ -27,6 +27,7 @@ class TcpServer(BaseServer):
             "synchronize": self.synchronize
         }
         self.synchronizers = dict() 
+        self.port = 25565
         pass
 
     def start(self):
@@ -61,7 +62,9 @@ class TcpServer(BaseServer):
             keyword_arguments = message["keyword_arguments"]
             synchronizer.create(type_arg, name, **keyword_arguments)
         else:
-            synchronizer.create(type_arg, name, dict())
+            n = message["n"]
+            keyword_arguments = {"n": n}
+            synchronizer.create(type_arg, name, keyword_arguments)
         
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
         self.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
@@ -101,6 +104,15 @@ class TcpServer(BaseServer):
 
                 action = message.get("op", None)
 
-                await self.action_handlers[action](websocket = websocket, message = message)
+                try:
+                    await self.action_handlers[action](message = message) #websocket = websocket, 
+                except Exception as ex:
+                    logger.error("Encountered error while executing operation \"%s\" on behalf of client." % ex)
+                    logger.error(str(ex))
             except websockets.ConnectionClosed:
                 break
+
+if __name__ == "__main__":
+    tcp_server = TcpServer()
+    print("Starting TCP server")
+    tcp_server.start()

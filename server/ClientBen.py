@@ -7,7 +7,7 @@ import ujson
 from counting_semaphore import CountingSemaphore
 from state import State
 
-SERVER_IP = ""
+SERVER_IP = "ws://localhost:25565"
 
 if sys.version_info<(3,0):
     input = raw_input
@@ -44,7 +44,7 @@ async def client_main():
         "op": "create", 
         "type": "Barrier", 
         "name": "b", 
-        "n": 2
+        "keyword_arguments": {"n": 2}
     }
 
     message_json = ujson.dumps(message)
@@ -53,23 +53,23 @@ async def client_main():
     
     print("Sent message to server")
 
-    try:
-        print("Starting client thread1")
-        _thread.start_new_thread(client_task_wrapper, (str(1)))
-    except Exception as ex:
-        print("[ERROR] Failed to start client thread1.")
-        print(ex)
+    # try:
+    #     print("Starting client thread1")
+    #     _thread.start_new_thread(client_task_wrapper, (str(1)))
+    # except Exception as ex:
+    #     print("[ERROR] Failed to start client thread1.")
+    #     print(ex)
 
-    try:
-        print("Starting client thread2")
-        _thread.start_new_thread(client_task_wrapper, (str(2)))
-    except Exception as ex:
-        print("[ERROR] Failed to start client thread2.")
-        print(ex)
+    # try:
+    #     print("Starting client thread2")
+    #     _thread.start_new_thread(client_task_wrapper, (str(2)))
+    # except Exception as ex:
+    #     print("[ERROR] Failed to start client thread2.")
+    #     print(ex)
 
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(client_main)
+    loop.run_until_complete(client_main())
     
 """
 Changes:
