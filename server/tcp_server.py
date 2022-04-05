@@ -99,7 +99,7 @@ class TcpServer(BaseServer):
 
                 message = ujson.loads(msg_json)
 
-                action = message.get("operation", None)
+                action = message.get("op", None)
 
                 await self.action_handlers[action](websocket = websocket, message = message)
             except websockets.ConnectionClosed:
