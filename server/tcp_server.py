@@ -54,14 +54,14 @@ class TcpServer(BaseServer):
         logger.debug("server.create() called.")
         type_arg = message["type"]
         name = message["name"]
-        
+
         synchronizer = Synchronizer()
 
         if "keyword_arguments" in message:
             keyword_arguments = message["keyword_arguments"]
             synchronizer.create(type_arg, name, **keyword_arguments)
         else:
-            synchronizer.create(type_arg, name)
+            synchronizer.create(type_arg, name, dict())
         
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
         self.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
@@ -77,7 +77,13 @@ class TcpServer(BaseServer):
         state = message['state']
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, obj_name = obj_name)
-        synchronizer = self.synchronizers[synchronizer_name].synchronize(method_name = method_name)
+        synchronizer = self.synchronizers[synchronizer_name]
+        
+        if "keyword_arguments" in message:
+            keyword_arguments = message["keyword_arguments"]
+            synchronizer.synchronize(method_name, state, **keyword_arguments)
+        else:
+            synchronizer.synchronize(method_name, state)
 
     async def server_loop(self, websocket, path):
         """

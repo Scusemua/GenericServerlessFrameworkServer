@@ -68,7 +68,7 @@ class Synchronizer(object):
         return name, False
         
     @Pyro4.oneway
-    def synchronize(self, method_name, **kwargs):
+    def synchronize(self, method_name, state, **kwargs):
         # where kws are: ID, program_counter cb, first
         # synchronize called as 
         #    synchronize(“wait_b”, ID = program_counter = cb =  first =
@@ -86,9 +86,12 @@ class Synchronizer(object):
         # fast = false so no check fast flag.
 
         ID = kwargs["ID"]
-        program_counter = kwargs["program_counter"]
-        cb = kwargs["cb"]
-        first = kwargs["first"]
+        #program_counter = kwargs["program_counter"]
+        #cb = kwargs["cb"]
+        #first = kwargs["first"]
+
+        program_counter = state._pc
+        state.pc = 10
  
         print("starting remote method " + str(method_name) + ", ID is: " + ID + " PC is " + str(program_counter))
 	# note: most examples are getattr(instance, name) but we have a class
