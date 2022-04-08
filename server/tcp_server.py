@@ -4,7 +4,10 @@ from re import A
 import ujson
 import websockets
 import cloudpickle 
+import _thread
 import base64 
+import threading
+import socket
 
 from base_server import BaseServer
 from synchronizer import Synchronizer
@@ -21,29 +24,14 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-class TcpServer(BaseServer):
-    def __init__(self):
-        self.action_handlers = {
-            "create": self.create,
-            "setup": self.setup,
-            "synchronize": self.synchronize
-        }
-        self.synchronizers = dict() 
-        self.port = 25565
-        pass
+class ServerThread(threading.Thread):
+    def __init__(self, ip, port, client_socket):
+        threading.Thread.__init__(self)
+        self.ip = ip
+        self.port = port
+        self.client_socket = client_socket 
+        logger.info("Starting new thread for " + str(ip) + ":" + str(port))
 
-    def start(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        self.server = websockets.serve(self.server_loop, "0.0.0.0", self.port)
-        logger.info("==========================")
-        logger.info("Started Python Coordinator")
-        logger.info("==========================")
-        # print_incomplete_pairing_names = asyncio.get_event_loop().create_task(printIncomplete())
-        self.loop.run_until_complete(self.server)
-        self.loop.run_forever()
-    
     def _get_synchronizer_name(self, obj_type = None, name = None):
         """
         Return the key of a synchronizer object. 
@@ -53,7 +41,7 @@ class TcpServer(BaseServer):
         #return "{0}-{1}".format(obj_type, name)
         return str(name) 
 
-    async def create(self, message = None):
+    def create(self, message = None):
         logger.debug("server.create() called.")
         type_arg = message["type"]
         name = message["name"]
@@ -71,11 +59,11 @@ class TcpServer(BaseServer):
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
         self.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
 
-    async def setup(self, message = None):
+    def setup(self, message = None):
         logger.debug("server.setup() called.")
         pass 
     
-    async def synchronize(self, message = None):
+    def synchronize(self, message = None):
         logger.debug("server.synchronize() called.")
         obj_name = message['name']
         method_name = message['method_name']
@@ -90,25 +78,54 @@ class TcpServer(BaseServer):
         else:
             synchronizer.synchronize(method_name, state)
 
-    async def server_loop(self, websocket, path):
-        """
-            This is the main server loop for the NAT Punching coordinator.
-
-            The coordinator listens for pairing names and caches the associated websocket. When it receives another message
-            with the same pairing name, the coordinator will send the IP addresses to each remote server.
-        """
+    def run(self):
         while True:
-            try:
-                # Listen for pairing names.
-                msg_json = await websocket.recv() # TODO: Possibly needs its own thread to handle this.
+            data = self.client_socket.recv(2048) 
+            json_message = ujson.loads(data)
+            action = json_message.get("op", None)
+            self.action_handlers[action](message = json_message)
 
-                message = ujson.loads(msg_json)
+class TcpServer(socket.socket):
+    def __init__(self):
+        socket.socket.__init__(self)
+        self.action_handlers = {
+            "create": self.create,
+            "setup": self.setup,
+            "synchronize": self.synchronize
+        }
+        self.synchronizers = dict() 
+        self.bind(('0.0.0.0', 25565))
+        self.listen(5)
+        self.server_threads = []
+    
+    def run(self):
+        print("Starting server...")
+        try:
+            self.server_loop()
+        except Exception as ex:
+            logger.error(ex)
+        finally:
+            for client in self.clients:
+                client.close()
+            self.close()
 
-                action = message.get("op", None)
+    def server_loop(self):
+        while True:
+            (client_socket, (address,port)) = self.accept()
 
-                await self.action_handlers[action](message = message) #websocket = websocket, 
-            except websockets.ConnectionClosed:
-                break
+            self.clients.append(client_socket)
+
+            self.onopen(client_socket)
+
+            server_thread = ServerThread(address, port, client_socket)
+            self.server_threads.append(server_thread)
+            server_thread.start()
+
+    def start(self):
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        logger.info("==========================")
+        logger.info("Started Python Coordinator")
+        logger.info("==========================")
 
 if __name__ == "__main__":
     tcp_server = TcpServer()
