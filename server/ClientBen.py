@@ -34,14 +34,13 @@ def client_task(taskID):
         "id": msg_id
     }
     print("Calling 'synchronize' on the server.")
-    message_json = ujson.dumps(message)
-
-    websocket.sendall(message_json.encode('utf-8'))
+    msg = ujson.dumps(message).encode('utf-8')
+    websocket.sendall(len(msg).to_bytes(2, byteorder='big'))
+    websocket.sendall(msg)
     print(taskID + " called synchronize PC: " + str(state._ID))
 
 def client_main():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        websocket = socket.socket()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
         websocket.connect(("127.0.0.1", 25565))
         msg_id = str(uuid.uuid4())
 
@@ -55,7 +54,9 @@ def client_main():
             "id": msg_id
         }
         
-        websocket.sendall(ujson.dumps(message).encode('utf-8'))
+        msg = ujson.dumps(message).encode('utf-8')
+        websocket.sendall(len(msg).to_bytes(2, byteorder='big'))
+        websocket.sendall(msg)
         
         print("Sent 'create' message to server")
 

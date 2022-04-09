@@ -33,23 +33,32 @@ class TCPHandler(socketserver.StreamRequestHandler):
     #     logger.info("Created TCPHandler")
 
     def handle(self):
+        logger.info("Recieved one request from {}".format(self.client_address[0]))
+
         self.action_handlers = {
             "create": self.create_obj,
             "setup": self.setup_server,
             "synchronize": self.synchronize
         }
-
-        #logger.info("Recieved one request from {}".format(self.client_address[0]))
-        #logger.info("Thread Name:{}".format(threading.current_thread().name))
+        logger.info("Thread Name:{}".format(threading.current_thread().name))
 
         try:
-            data = self.rfile.readline().strip()
+            incoming_size = self.rfile.read(2)
+            incoming_size = int.from_bytes(incoming_size, 'big')
+            logger.info("Will receive another message of size %d bytes" % incoming_size)
+            data = self.rfile.read(incoming_size).strip()
             #logger.info("Received %d bytes from client: %s" % (len(data), str(data)))
             json_message = ujson.loads(data)
             message_id = json_message["id"]
             logger.debug("Received message (size=%d bytes) from client %s with ID=%s" % (len(data), self.client_address[0], message_id))
             action = json_message.get("op", None)
+            resp = {
+                "op": "ack"
+            }
             self.action_handlers[action](message = json_message)
+            logger.info("Writing response back to client %s" % self.client_address[0])
+            self.wfile.write(ujson.dumps(resp).encode('utf-8'))            
+            logger.info("Wrote response back to client %s" % self.client_address[0])
         except Exception as ex:
             logger.error(ex)
             logger.error(traceback.format_exc())
