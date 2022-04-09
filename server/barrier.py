@@ -2,6 +2,17 @@ from re import L
 from monitor_su import MonitorSU, ConditionVariable
 import threading
 
+import logging 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+
+logger.addHandler(ch)
+
 class Barrier(MonitorSU):
     def __init__(self, initial_n = 0, monitor_name = None):
         super(Barrier, self).__init__(monitor_name = monitor_name)
@@ -16,17 +27,17 @@ class Barrier(MonitorSU):
 
     @n.setter
     def n(self, value):
-        print("Setting value of n to " + str(value))
+        logger.debug("Setting value of n to " + str(value))
         self._n = value
 
     #def init(self,value):
-    #    print ("Barrier init to " + str(value))
+    #    logger.debug ("Barrier init to " + str(value))
     #    self._n = value
 
     def init(self, **kwargs):
-        print(kwargs)
+        logger.debug(kwargs)
         #if not len(kwargs) == 1:
-        #    print("Error - Barrier init has too many args.")
+        #    logger.debug("Error - Barrier init has too many args.")
             # Throw remote exception?
         self._n = kwargs['n']
 
@@ -52,19 +63,19 @@ class Barrier(MonitorSU):
         return block
 
     def wait_b(self, **kwargs):
-        #print(threading.current_thread())
+        #logger.debug(threading.current_thread())
         serverlessFunctionID = kwargs['ID']
-        print(serverlessFunctionID + " wait_B current thread ID is " + str(threading.current_thread().getID()))
-        print(serverlessFunctionID + " wait_b calling enter_monitor")
+        logger.debug(serverlessFunctionID + " wait_B current thread ID is " + str(threading.current_thread().getID()))
+        logger.debug(serverlessFunctionID + " wait_b calling enter_monitor")
         
         # if we called try_wait_B first, we still have the mutex so this enter_monitor does not do mutex.P
         super().enter_monitor(method_name = "wait_b")
         
-        print(serverlessFunctionID + " Entered monitor in wait_b()")
-        print(serverlessFunctionID + " wait_b() entered monitor. len(self._go) = " + str(len(self._go)) + ", self._n=" + str(self._n))
+        logger.debug(serverlessFunctionID + " Entered monitor in wait_b()")
+        logger.debug(serverlessFunctionID + " wait_b() entered monitor. len(self._go) = " + str(len(self._go)) + ", self._n=" + str(self._n))
 
         if len(self._go) < (self._n - 1):
-            print(serverlessFunctionID + " Calling _go.wait_c() from Barrier")
+            logger.debug(serverlessFunctionID + " Calling _go.wait_c() from Barrier")
             self._go.wait_c()
             # serverless functions are rstarted by default, so this serverless function
             # will be restarted, as expected for barrier.
@@ -84,15 +95,15 @@ class Barrier(MonitorSU):
             # - The last/become thread can receive the outputs of the other serverless functions
             #   as return object(s) of 2-way cal to wait_b.
             threading.current_thread()._restart = False
-            print(serverlessFunctionID + " Last thread in Barrier so not calling self._go.wait_c")
+            logger.debug(serverlessFunctionID + " Last thread in Barrier so not calling self._go.wait_c")
 
-        print(serverlessFunctionID + " !!!!! Client exiting Barrier wait_b !!!!!")
+        logger.debug(serverlessFunctionID + " !!!!! Client exiting Barrier wait_b !!!!!")
         # does mutex.V
         self._go.signal_c_and_exit_monitor()
 
         return serverlessFunctionID
 
-        #No prints here. main Client can exit while other threads are
-        #doing this print so main thread/interpreter can't get stdout lock?
+        #No logger.debugs here. main Client can exit while other threads are
+        #doing this logger.debug so main thread/interpreter can't get stdout lock?
         
         
