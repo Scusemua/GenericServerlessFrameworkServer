@@ -82,6 +82,12 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("Caching new Synchronizer with name '%s'" % synchronizer_name)
         tcp_server.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
 
+        resp = {
+            "op": "ack",
+            "op_performed": "create"
+        }
+        self.wfile.write(ujson.dumps(resp).encode('utf-8'))
+
     def setup_server(self, message = None):
         logger.debug("server.setup() called.")
         pass 
