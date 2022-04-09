@@ -184,9 +184,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
         
         if "keyword_arguments" in message:
             keyword_arguments = message["keyword_arguments"]
-            sync_ret_val = synchronizer.synchronize_async(method_name, state, **keyword_arguments)
+            sync_ret_val = synchronizer.synchronize(method_name, state, **keyword_arguments)
         else:
-            sync_ret_val = synchronizer.synchronize_async(method_name, state)
+            sync_ret_val = synchronizer.synchronize(method_name, state)
         
         logger.debug("Synchronize returned: %s" % str(sync_ret_val))
             

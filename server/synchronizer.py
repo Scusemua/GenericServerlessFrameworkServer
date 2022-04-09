@@ -18,6 +18,8 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
+ # TODO: The serverless function needs to pass its name to synchronize_sync/async so that it can be restarted.
+
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class Synchronizer(object):
@@ -98,7 +100,7 @@ class Synchronizer(object):
         return returnValue
 
     @Pyro4.oneway
-    def synchronize_async(self, method_name, state, **kwargs):
+    def synchronize(self, method_name, state, **kwargs):
         ID_arg = kwargs["ID"]
         logger.debug("starting synchronize, method_name: " + str(method_name) + ", ID is: " + ID_arg)
         
