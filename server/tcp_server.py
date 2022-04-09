@@ -28,6 +28,32 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 class TCPHandler(socketserver.StreamRequestHandler):
+    # def __init__(self, request, client_address, server):
+    #     super().__init__(request, client_address, server)
+    #     logger.info("Created TCPHandler")
+
+    def handle(self):
+        self.action_handlers = {
+            "create": self.create_obj,
+            "setup": self.setup_server,
+            "synchronize": self.synchronize
+        }
+
+        #logger.info("Recieved one request from {}".format(self.client_address[0]))
+        #logger.info("Thread Name:{}".format(threading.current_thread().name))
+
+        try:
+            data = self.rfile.readline().strip()
+            #logger.info("Received %d bytes from client: %s" % (len(data), str(data)))
+            json_message = ujson.loads(data)
+            message_id = json_message["id"]
+            logger.debug("Received message (size=%d bytes) from client %s with ID=%s" % (len(data), self.client_address[0], message_id))
+            action = json_message.get("op", None)
+            self.action_handlers[action](message = json_message)
+        except Exception as ex:
+            logger.error(ex)
+            logger.error(traceback.format_exc())
+
     def _get_synchronizer_name(self, obj_type = None, name = None):
         """
         Return the key of a synchronizer object. 
@@ -37,7 +63,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         #return "{0}-{1}".format(obj_type, name)
         return str(name) 
 
-    def create(self, message = None):
+    def create_obj(self, message = None):
         logger.debug("server.create() called.")
         type_arg = message["type"]
         name = message["name"]
@@ -53,9 +79,10 @@ class TCPHandler(socketserver.StreamRequestHandler):
             synchronizer.create(type_arg, name, keyword_arguments)
         
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
-        self.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
+        logger.debug("Caching new Synchronizer with name '%s'" % synchronizer_name)
+        tcp_server.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
 
-    def setup(self, message = None):
+    def setup_server(self, message = None):
         logger.debug("server.setup() called.")
         pass 
     
@@ -66,24 +93,20 @@ class TCPHandler(socketserver.StreamRequestHandler):
         state = cloudpickle.loads(base64.b64decode(message['state'])) 
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
-        synchronizer = self.synchronizers[synchronizer_name]
+        logger.debug("Trying to retrieve existing Synchronizer '%s'" % synchronizer_name)
+        synchronizer = tcp_server.synchronizers[synchronizer_name]
+        
+        if (synchronizer is None):
+            raise ValueError("Could not find existing Synchronizer with name '%s'" % synchronizer_name)
+        
+        logger.debug("Successfully found synchronizer")
         
         if "keyword_arguments" in message:
             keyword_arguments = message["keyword_arguments"]
             synchronizer.synchronize(method_name, state, **keyword_arguments)
         else:
             synchronizer.synchronize(method_name, state)
-    
-    def run(self):
-        print("Recieved one request from {}".format(self.client_address[0]))
-
-        msg = self.rfile.readline().strip()
-
-        print("Data Recieved from client is:".format(msg))
-
-        print(msg)  
-
-        print("Thread Name:{}".format(threading.current_thread().name))
+            
 
 class TCPServer(object):
     def __init__(self):

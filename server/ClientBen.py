@@ -4,6 +4,7 @@ import websockets
 import asyncio
 import time
 import ujson
+import uuid
 from counting_semaphore import CountingSemaphore
 from state import State
 from threading import Thread
@@ -24,14 +25,16 @@ def client_task(taskID):
     state._pc = taskID
     websocket = socket.socket()
     websocket.connect(("127.0.0.1", 25565))
-    print(taskID + " calling synchronize PC: " + str(state._ID))
+    msg_id = str(uuid.uuid4())
+    print(taskID + " calling synchronize PC: " + str(state._ID) + ". Message ID=" +msg_id)
 
     message = {
         "op": "synchronize", 
         "name": "b", 
         "method_name": "wait_b", 
         "state": base64.b64encode(cloudpickle.dumps(state)).decode('utf-8'), 
-        "keyword_arguments": {"ID": taskID}
+        "keyword_arguments": {"ID": taskID},
+        "id": msg_id
     }
     print("Calling 'synchronize' on the server.")
     message_json = ujson.dumps(message)
@@ -42,21 +45,23 @@ def client_task(taskID):
 def client_main():
     websocket = socket.socket()
     websocket.connect(("127.0.0.1", 25565))
+    msg_id = str(uuid.uuid4())
 
-    print("Sending message to server...")
+    print("Sending 'create' message to server. Message ID=" + msg_id)
 
     message = {
         "op": "create", 
         "type": "Barrier", 
         "name": "b", 
-        "keyword_arguments": {"n": 2}
+        "keyword_arguments": {"n": 2},
+        "id": msg_id
     }
 
     message_json = ujson.dumps(message)
     
     websocket.sendall(message_json.encode('utf-8'))
     
-    print("Sent message to server")
+    print("Sent 'create' message to server")
 
     try:
         print("Starting client thread1")
