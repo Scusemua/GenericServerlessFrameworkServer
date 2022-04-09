@@ -109,7 +109,7 @@ class Synchronizer(object):
 	# so we get an attribute of class (getattr(class, name) and we need
 	# an instance to call it on so method(instance)(parm)
 
-        method_name = "try_"+method_name
+        #method_name = "try_"+method_name
 	
         base_name, isTryMethod = self.isTry_and_getMethodName(method_name)
         logger.debug("method_name: " + method_name)

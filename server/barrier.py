@@ -101,6 +101,7 @@ class Barrier(MonitorSU):
         # does mutex.V
         self._go.signal_c_and_exit_monitor()
 
+        threading.current_thread()._returnValue = serverlessFunctionID
         return serverlessFunctionID
 
         #No logger.debugs here. main Client can exit while other threads are

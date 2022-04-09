@@ -1,6 +1,17 @@
 
 from threading import Thread
 
+import logging 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+
+logger.addHandler(ch)
+
 class synchronizerThread(Thread):
     def __init__(self, threadID, PythonThreadName, synchronizer, synchronizer_method, **kwargs):
         # Call the Thread class's init function
@@ -29,4 +40,4 @@ class synchronizerThread(Thread):
         self._returnValue = self._synchronizer_method(self._synchronizer,**self._kwargs)
         # where wait_b in Barrier is wait_b(self, **kwargs):
 
-        print ("return value is " + str(self._returnValue))
+        logger.debug("return value is " + str(self._returnValue))
