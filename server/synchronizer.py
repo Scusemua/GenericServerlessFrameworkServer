@@ -78,153 +78,55 @@ class Synchronizer(object):
             return name[4:], True
         return name, False
         
-    @Pyro4.oneway
-    def synchronize(self, method_name, state, **kwargs):
-        # where kws are: ID, program_counter cb, first
-        # synchronize called as 
-        #    synchronize(“wait_b”, ID = program_counter = cb =  first =
-        # where we might start with cb = None and first = None
-        # wait_b in Barrier is wait_b(self, **kwargs):
-        # with ID = kwarg[‘ID’], etc though we may not be using parms
-
-        # Todo: fast_wait_b : perhaps call Barrier setFast to set fast = true
-        # and do the mutex.P instead of enterMonitor, so Enter and Exit
-        # monitor of fast_wait_b do not do anything and
-        # if fast_b returns wait is true then return WAIT and call
-        # regular wait_b and enter_monitor again will not mutex.P
-        # but will set fast = false so exit_monitor will do mutex.V.
-        # note: sgnal and exit not used for fast_X and if caled always
-        # fast = false so no check fast flag.
-
+    def trySynchronize(self, method_name, state, **kwargs):
+    # 	method_name is "executesWait"
+    
         ID_arg = kwargs["ID"]
-        #program_counter = kwargs["program_counter"]
-        #cb = kwargs["cb"]
-        #first = kwargs["first"]
-
-        program_counter = state._pc
-        state.pc = 10
- 
-        logger.debug("starting remote method " + str(method_name) + ", ID is: " + ID_arg + " PC is " + str(program_counter))
-	# note: most examples are getattr(instance, name) but we have a class
-	# so we get an attribute of class (getattr(class, name) and we need
-	# an instance to call it on so method(instance)(parm)
-
-        #method_name = "try_"+method_name
-	
-        base_name, isTryMethod = self.isTry_and_getMethodName(method_name)
-        logger.debug("method_name: " + method_name)
-        logger.debug("base_name: " + base_name)
-        logger.debug("isTryMethod: " + str(isTryMethod))
-
+        logger.debug("starting trySynchronize, method_name: " + str(method_name) + ", ID is: " + ID_arg)
+        
         try:
-
-            # call try_baseName
             _synchronizer_method = getattr(self._synchClass,method_name)
         except Exception as x:
-            logger.debug("Caught Error >>> %s" % x)
-            logger.debug("Pyro Traceback:")
-            logger.debug("".join(Pyro4.util.getPyroTraceback()))
-            logger.debug("End Traceback")
+            logger.error("Caught Error >>> %s" % x)
 
-        
-        #_synchronizer_method(self._synchronizer)#(kwargs)
-        #
-#rhc: lock
-        self.threadID += 1
-#rhc: unlock
-
-        
-        #logger.debug ("starting caller thread to make the call"  + str(self.threadID))
-        #callerThread = synchronizerThread(self.threadID, "callerThread"+str(self.threadID),  self._synchronizer, _synchronizer_method, **kwargs)
-        #callerThread.start()
-        #logger.debug("calling acquire exited.")
-        #self._synchronizer._exited.acquire()
-
-#rhc: we need synchronizeAsynch and synchronizeSynch where Synch version is for try or always 2-way
-#     and Asynch is for always 1-way (like a P or V operation)
-#     Q: A barrier will want to do something with outputs? Lie a fan-in with an output of results somewhere or
-#     barrier succeeded by fan-in, which is collecting outputs and saving them? or is looping them back?
-#     Example, suppose functions are each doing half and then fan-in results for final op on the halves, then output final result
-#     or feed result back into next iteration, i.e., send this result back to both serverless functions? So we need a post()
-#     for the barrier, which processes the sub-results, maybe outputs the result of this process and either sends something
-#     back to functions or tells them to exit loop. while(!stop) { sf1 ... sfn: (do work; r, stop = b.waitB) so they al get stop and stop 
-
-        if isTryMethod:
-            # execute atomic try_wait_b followed by wait_b, i.e., no other thread can enter
-            # between this threads try_waitb and wait_b.
-
-            # call the try-method
-            myPythonThreadName = "Try_callerThread"+str(ID_arg)
-            restart, returnValue = self.doMethodCall(self.threadID, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
-            
-            logger.debug("Try_callerThread " + str(ID_arg) + " restart " + str(restart))
-            logger.debug("Try_callerThread " + str(ID_arg) + " returnValue " + str(returnValue))
-            logger.debug("Try_callerThread Synchronizer successfully called synchronizer try-method and acquire exited. ")
-                  
-            if returnValue:  # base_name blocks on conditionVariable
-                #send back to serverless function before executing base method for earliest serverless function termination
-                #Need the socket of he caler to do this. When clientHandler of socket calls synchronize() on the synchronizer, it
-                #can pass a way to return a value back to clentHandler, which is waiting for a vlaue (true, None) or (False, Object)
-                #to send back to serverlessFunction. Example: clientHandler blicks on a semaphore and passes self to synchronizer
-                #so we can call clientHandler.resume(tuple) where resume() saves tuple and release semaphore so clintHandlerThread
-                #can get and send tuple to serverlessFunction.
+        myPythonThreadName = "Try_callerThread"+str(ID_arg)
+        restart, returnValue = self.doMethodCall(2, myPythonThreadName, self._synchronizer, self._synchronizer_method, **kwargs)
                 
-                #send (true, None) back to serverless function
-                try:
-                    # call baseName method
-                    _synchronizer_method = getattr(self._synchClass,base_name)
-                except Exception as x:
-                    logger.debug("Caught Error >>> %s" % x)
-                    logger.debug("Pyro Traceback:")
-                    logger.debug("".join(Pyro4.util.getPyroTraceback()))
-                    logger.debug("End Traceback")
-                myPythonThreadName = "BaseNameTryBlocking_callerThread"+str(ID_arg)
-                restart, returnValue = self.doMethodCall(self.threadID, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
+        logger.debug("TtrySynchronize " + " restart " + str(restart))
+        logger.debug("trySynchronize " + " returnValue " + str(returnValue))
+        
+        return returnValue
 
-                logger.debug("BaseNameTryBlocking_callerThread " + str(ID_arg) + " restart " + str(restart))
-                logger.debug("BaseNameTryBlocking_callerThread " + str(ID_arg) + " returnValue " + str(returnValue))
-                logger.debug("BaseNameTryBlocking_callerThread Synchronizer successfully called synchronizer baseName-method and acquire exited. ")
+    @Pyro4.oneway
+    def synchronize_async(self, method_name, state, **kwargs):
+        ID_arg = kwargs["ID"]
+        logger.debug("starting synchronize, method_name: " + str(method_name) + ", ID is: " + ID_arg)
+        
+        try:
+            _synchronizer_method = getattr(self._synchClass,method_name)
+        except Exception as x:
+            logger.error("Caught Error >>> %s" % x)
+        
+        myPythonThreadName = "NotTrycallerThread"+str(self.threadID)
+        restart, returnValue = self.doMethodCall(1, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs) 
+        
+        #rhc:   idea is if callerThread.getRestart() is true then restart he corresponding function.
+        #rhc:   restart default/init value is true. Should be set to false for non-last callers of fan-in, or
+        #         when doing synch/fast-path, in which case you know calling function is not restarting
+        #rhc:   Barrier: would restart all, and init value of restart ia true
+        #rhc:     if len(self._go) < (self._n - 1):
+        #rhc            self._go.wait_c()
+        #rhc      else:
+        #rhc            threading.current_thread()._restart = False
 
-                # check and maybe do restart
-            else:  # base_name does not block on conditionVariable
-                try:
-                    # call baseName
-                    _synchronizer_method = getattr(self._synchClass,base_name)
-                except Exception as x:
-                    logger.debug("Caught Error >>> %s" % x)
-                    logger.debug("Pyro Traceback:")
-                    logger.debug("".join(Pyro4.util.getPyroTraceback()))
-                    logger.debug("End Traceback")
-                myPythonThreadName = "BaseNameTryNoBlocking_callerThreadTry"+str(self.threadID)
-                restart, returnValue = self.doMethodCall(self.threadID, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
-                logger.debug("BaseNameTryNoBlocking_callerThreadTry " + str(ID_arg) + " restart " + str(restart))
-                logger.debug("BaseNameTryNoBlocking_callerThreadTry " + str(ID_arg) + " returnValue " + str(returnValue))
-                logger.debug("BaseNameTryNoBlocking_callerThreadTry Synchronizer successfully called synchronizer baseName-method and acquire exited. ")
+        logger.debug("synchronize " + str(ID_arg) + " restart " + str(restart))
+        logger.debug("synchronize " + str(ID_arg) + " returnValue " + str(returnValue))
+        logger.debug("synchronize successfully called synchronize method and acquire exited. ")
 
-                #rhc: Q: for fan-in send all fan-in outputs/inputs? Note: can execute fan-in task on server.
-                
-                # No restart, send return value back to serverless function, so execute baseName before send
-                #send (true, returnValue(s)) back to serverless function
-        else:
-            myPythonThreadName = "NotTrycallerThread"+str(self.threadID)
-            restart, returnValue = self.doMethodCall(self.threadID, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)   
-
-            #rhc:   idea is if callerThread.getRestart() is true then restart he corresponding function.
-            #rhc:   restart default/init value is true. Should be set to false for non-last callers of fan-in, or
-            #         when doing synch/fast-path, in which case you know calling function is not restarting
-            #rhc:   Barrier: would restart all, and init value of restart ia true
-            #rhc:     if len(self._go) < (self._n - 1):
-            #rhc            self._go.wait_c()
-            #rhc      else:
-            #rhc            threading.current_thread()._restart = False
-
-            logger.debug("caller thread " + str(ID_arg) + " restart " + str(restart))
-            logger.debug("caller thread " + str(ID_arg) + " returnValue " + str(returnValue))
-            logger.debug(" Synchronizer successfully called synchronizer method and acquire exited. ")
-
-            #if restart:
-            #cb.restart(ID, program_counter, cb, first)
-            return returnValue # for something to return
+        #if restart:
+        #	restart serverless function, needs its ID?
+        
+        return returnValue
 
     def doMethodCall(self, PythonThreadID, myName, synchronizer, synchronizer_method, **kwargs):
         logger.debug ("starting caller thread to make the call")

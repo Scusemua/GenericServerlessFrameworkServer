@@ -26,7 +26,7 @@ def client_task(taskID):
     print(taskID + " calling synchronize PC: " + str(state._ID) + ". Message ID=" +msg_id)
 
     message = {
-        "op": "synchronize", 
+        "op": "synchronize_async", 
         "name": "b", 
         "method_name": "wait_b", 
         "state": base64.b64encode(cloudpickle.dumps(state)).decode('utf-8'), 

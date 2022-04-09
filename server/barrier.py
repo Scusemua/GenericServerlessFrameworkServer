@@ -36,9 +36,10 @@ class Barrier(MonitorSU):
 
     def init(self, **kwargs):
         logger.debug(kwargs)
-        #if not len(kwargs) == 1:
-        #    logger.debug("Error - Barrier init has too many args.")
-            # Throw remote exception?
+        if kwargs is None or len(kwargs) == 0:
+            raise ValueError("Barrier requires a length. No length provided.")
+        elif len(kwargs) > 1:
+           raise ValueError("Error - Barrier init has too many args.")
         self._n = kwargs['n']
 
     # This try-method must not block - it passes a condition to is_blocking
@@ -46,13 +47,13 @@ class Barrier(MonitorSU):
     # Note: A thread may wait behind other threads to enter the monitor here and
     # in wait_b; we are checking only for go.wait_c(), not whether the current thread
     # is next to get the mutex lock (as in a Java try_acquire() on a semaphore).
-    def try_wait_b(self, **kwargs):
+    def executes_wait(self, **kwargs):
         # Does mutex.P as usual
-        super().enter_monitor(method_name = "try_wait_b")
+        super().enter_monitor(method_name = "executes_wait")
         
         # super.is_blocking has a side effect which is to make sure that exit_monitor below
         # does not do mutex.V, also that enter_monitor of wait_b that follows does not do mutex.P.
-        # This males try_wait_b ; wait_b atomic
+        # This males executes_wait ; wait_b atomic
         
         block = super().is_blocking(self._go._num_waiting_threads < (self._n - 1))
         
@@ -68,7 +69,7 @@ class Barrier(MonitorSU):
         logger.debug(serverlessFunctionID + " wait_B current thread ID is " + str(threading.current_thread().getID()))
         logger.debug(serverlessFunctionID + " wait_b calling enter_monitor")
         
-        # if we called try_wait_B first, we still have the mutex so this enter_monitor does not do mutex.P
+        # if we called executes_wait first, we still have the mutex so this enter_monitor does not do mutex.P
         super().enter_monitor(method_name = "wait_b")
         
         logger.debug(serverlessFunctionID + " Entered monitor in wait_b()")

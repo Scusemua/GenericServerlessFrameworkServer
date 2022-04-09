@@ -27,6 +27,11 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
+def isTry_and_getMethodName(name):
+    if name.startswith("try_"):
+        return name[4:], True
+    return name, False
+
 class TCPHandler(socketserver.StreamRequestHandler):
     # def __init__(self, request, client_address, server):
     #     super().__init__(request, client_address, server)
@@ -38,7 +43,8 @@ class TCPHandler(socketserver.StreamRequestHandler):
         self.action_handlers = {
             "create": self.create_obj,
             "setup": self.setup_server,
-            "synchronize": self.synchronize
+            "synchronize_async": self.synchronize_async,
+            "synchronize_sync": self.synchronize_sync
         }
         logger.info("Thread Name:{}".format(threading.current_thread().name))
 
@@ -69,6 +75,66 @@ class TCPHandler(socketserver.StreamRequestHandler):
         #return "{0}-{1}".format(obj_type, name)
         return str(name) 
 
+    def synchronize_sync(self, message = None):
+        logger.debug("server.synchronize_async() called.")
+        obj_name = message['name']
+        method_name = message['method_name']
+        state = cloudpickle.loads(base64.b64decode(message['state'])) 
+
+        synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
+        logger.debug("Trying to retrieve existing Synchronizer '%s'" % synchronizer_name)
+        synchronizer = tcp_server.synchronizers[synchronizer_name]
+
+        base_name, isTryMethod = self.isTry_and_getMethodName(method_name)
+    
+        logger.debug("method_name: " + method_name)
+        logger.debug("base_name: " + base_name)
+        logger.debug("isTryMethod: " + str(isTryMethod))    
+        
+        try:
+            _synchronizer_method = getattr(self._synchClass,method_name)
+        except Exception as x:
+            logger.debug("Caught Error >>> %s" % x)
+
+        if isTryMethod: 
+            # check if synchronize op will block, if yes tell client to terminate then call op
+            # rhc: FIX THIS here and in CREATE: let 
+            if "keyword_arguments" in message:
+                keyword_arguments = message["keyword_arguments"]
+                return_value = synchronizer.trySynchronize("executesWait", state, **keyword_arguments)
+            else:
+                return_value =  synchronizer.trySynchronize("executesWait", state)
+        
+            if return_value == True:   # synchronize op will execute wait so tell client to terminate
+                # TCP.send a tuple [True, None] back to Client
+                
+                # execute synchronize op but don't send result to client
+                if "keyword_arguments" in message:
+                    keyword_arguments = message["keyword_arguments"]
+                    return_value = synchronizer.synchronize(method_name, state, **keyword_arguments)
+                else:
+                    return_value = synchronizer.synchronize(method_name, state)   
+            else:
+                # execute synchronize op but don't send result to client
+                if "keyword_arguments" in message:
+                    keyword_arguments = message["keyword_arguments"]
+                    return_value = synchronizer.synchronize(method_name, state, **keyword_arguments)
+                else:
+                    return_value = synchronizer.synchronize(method_name, state)
+                    
+                    # TCP.send tuple [False, return_value] back to Client
+                
+        else:  # not a "try" so do synchronization op and send result to waiting client
+            # rhc: FIX THIS here and in CREATE
+            if "keyword_arguments" in message:
+                keyword_arguments = message["keyword_arguments"]
+                return_value = synchronizer.synchronize(method_name, state, **keyword_arguments)
+            else:
+                return_value =  synchronizer.synchronize(method_name, state)
+                
+            # send tuple to be consistent, and False to be consistent, i.e., get result if False
+            # TCP.send tuple [False, return_value] back to Client
+
     def create_obj(self, message = None):
         logger.debug("server.create() called.")
         type_arg = message["type"]
@@ -80,9 +146,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
             keyword_arguments = message["keyword_arguments"]
             synchronizer.create(type_arg, name, **keyword_arguments)
         else:
-            n = message["n"]
-            keyword_arguments = {"n": n}
-            synchronizer.create(type_arg, name, keyword_arguments)
+            synchronizer.create(type_arg, name, {})
         
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
         logger.debug("Caching new Synchronizer with name '%s'" % synchronizer_name)
@@ -103,8 +167,8 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.setup() called.")
         pass 
     
-    def synchronize(self, message = None):
-        logger.debug("server.synchronize() called.")
+    def synchronize_async(self, message = None):
+        logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
         state = cloudpickle.loads(base64.b64decode(message['state'])) 
@@ -120,9 +184,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
         
         if "keyword_arguments" in message:
             keyword_arguments = message["keyword_arguments"]
-            sync_ret_val = synchronizer.synchronize(method_name, state, **keyword_arguments)
+            sync_ret_val = synchronizer.synchronize_async(method_name, state, **keyword_arguments)
         else:
-            sync_ret_val = synchronizer.synchronize(method_name, state)
+            sync_ret_val = synchronizer.synchronize_async(method_name, state)
         
         logger.debug("Synchronize returned: %s" % str(sync_ret_val))
             
@@ -132,7 +196,7 @@ class TCPServer(object):
         self.synchronizers = dict() 
         self.server_threads = []
         self.clients = []
-        self.server_address = ("127.0.0.1",25565)
+        self.server_address = ("0.0.0.0",25565)
         self.tcp_server = socketserver.ThreadingTCPServer(self.server_address, TCPHandler)
     
     def start(self):

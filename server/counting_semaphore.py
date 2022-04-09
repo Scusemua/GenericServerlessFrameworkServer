@@ -2,6 +2,17 @@ from imp import release_lock
 from multiprocessing import Semaphore, RLock
 import queue
 
+import logging 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+
+logger.addHandler(ch)
+
 class CountingSemaphore(object):
     def __init__(self, initial_permits = 0, id = -1, semaphore_name = "DEFAULT_NAME"):
         self.waiting_p = []
@@ -32,23 +43,23 @@ class CountingSemaphore(object):
         # See semaphore waitHere below
         queue_object = QueueObject() # queue_object is called 'o' in the Java code.
 
-        print("Trying to lock counting semaphore now...")
+        logger.debug("Trying to lock counting semaphore now...")
 
         # Need a lock per each Semaphore, i.e., a "Lock thisLock" member of CountingSemaphore.
         # So thisLock.lock() instead of synchonized(this)
         self._mutex.acquire() # Lock semaphore
 
-        print("Counting semaphore " + str(self._name) + " has been locked.")
+        logger.debug("Counting semaphore " + str(self._name) + " has been locked.")
 
         #try:
         self._permits -= 1
     
         if (self._permits >= 0): # then no need to block thread
-            print("release and return")
+            logger.debug("release and return")
             self._mutex.release()
             return 
         #except Exception as ex:
-            print("[ERROR] Unexpected error occurred during `P()`: " + str(ex))
+            logger.debug("[ERROR] Unexpected error occurred during `P()`: " + str(ex))
         #finally:
         self._mutex.release()
 
@@ -59,11 +70,11 @@ class CountingSemaphore(object):
         self.waiting_p.append(queue_object) # otherwise append blocked thread  
 
         try:
-            print("Calling acquire() on wait_here")
+            logger.debug("Calling acquire() on wait_here")
             wait_here.acquire()
-            print("Done acquiring 'wait_here' Semaphore")
+            logger.debug("Done acquiring 'wait_here' Semaphore")
         except Exception as ex:
-            print("[ERROR] Exception encountered while acquiring Semaphore: " + str(ex))
+            logger.debug("[ERROR] Exception encountered while acquiring Semaphore: " + str(ex))
 
     def acquire(self):
         """
@@ -134,7 +145,7 @@ class CountingSemaphore(object):
                 # this is now oldest.waitHere.V();
                 oldest_queue_object.release()
         except Exception as ex:
-            print("[ERROR] Unexpected error occurred during `V()`: " + str(ex))
+            logger.debug("[ERROR] Unexpected error occurred during `V()`: " + str(ex))
         finally:
             self._mutex.release()
     
@@ -212,7 +223,7 @@ class CountingSemaphore(object):
         try:
             queue_object.wait_here.acquire()
         except Exception as ex:
-            print("[ERROR] Exception encountered while acqu")
+            logger.debug("[ERROR] Exception encountered while acqu")
 
 class QueueObject(object):
     def __init__(self):
