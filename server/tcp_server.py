@@ -56,9 +56,6 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 "op": "ack"
             }
             self.action_handlers[action](message = json_message)
-            logger.info("Writing response back to client %s" % self.client_address[0])
-            self.wfile.write(ujson.dumps(resp).encode('utf-8'))            
-            logger.info("Wrote response back to client %s" % self.client_address[0])
         except Exception as ex:
             logger.error(ex)
             logger.error(traceback.format_exc())
@@ -95,7 +92,12 @@ class TCPHandler(socketserver.StreamRequestHandler):
             "op": "ack",
             "op_performed": "create"
         }
-        self.wfile.write(ujson.dumps(resp).encode('utf-8'))
+        #############################
+        # Write ACK back to client. #
+        #############################
+        logger.info("Sending ACK to client %s for CREATE operation." % self.client_address[0])
+        self.wfile.write(ujson.dumps(resp).encode('utf-8'))            
+        logger.info("Sent ACK to client %s for CREATE operation." % self.client_address[0])
 
     def setup_server(self, message = None):
         logger.debug("server.setup() called.")
