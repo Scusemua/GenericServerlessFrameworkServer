@@ -27,7 +27,19 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-class TCPHandler(socketserver.StreamRequestHandler):
+class ServerThread(threading.Thread):
+    def __init__(self, ip, port, client_socket):
+        threading.Thread.__init__(self)
+        self.ip = ip
+        self.port = port
+        self.client_socket = client_socket 
+        self.action_handlers = {
+            "create": self.create,
+            "setup": self.setup,
+            "synchronize": self.synchronize
+        }        
+        logger.info("Starting new thread for " + str(ip) + ":" + str(port))
+
     def _get_synchronizer_name(self, obj_type = None, name = None):
         """
         Return the key of a synchronizer object. 
@@ -73,34 +85,59 @@ class TCPHandler(socketserver.StreamRequestHandler):
             synchronizer.synchronize(method_name, state, **keyword_arguments)
         else:
             synchronizer.synchronize(method_name, state)
-    
+
     def run(self):
-        print("Recieved one request from {}".format(self.client_address[0]))
+        while True:
+            try:
+                data = self.client_socket.recv(2048) 
+                logger.info("Received %d bytes from client: %s" % (len(data), str(data)))
+                json_message = ujson.loads(data)
+                action = json_message.get("op", None)
+                self.action_handlers[action](message = json_message)
+            except Exception as ex:
+                logger.error(ex)
+                logger.error(traceback.format_exc())            
 
-        msg = self.rfile.readline().strip()
-
-        print("Data Recieved from client is:".format(msg))
-
-        print(msg)  
-
-        print("Thread Name:{}".format(threading.current_thread().name))
-
-class TCPServer(object):
+class TcpServer(socket.socket):
     def __init__(self):
+        socket.socket.__init__(self)
         self.synchronizers = dict() 
         self.server_threads = []
         self.clients = []
-        self.server_address = ("127.0.0.1",25565)
-        self.tcp_server = socketserver.ThreadingTCPServer(self.server_address, TCPHandler)
     
-    def start(self):
-        logger.info("Starting TCP server.")
+    def run(self):
+        print("Starting server...")
         try:
-            self.tcp_server.serve_forever()
+            self.server_loop()
         except Exception as ex:
-            logger.error("Exception encountered:" + repr(ex))
+            logger.error(ex)
+            logger.error(traceback.format_exc())
+        finally:
+            for client in self.clients:
+                client.close()
+            self.close()
+
+    def server_loop(self):
+        print("Server started. Listening for clients now.")
+        while True:
+            (client_socket, (address,port)) = self.accept()
+
+            self.clients.append(client_socket)
+
+            server_thread = ServerThread(address, port, client_socket)
+            self.server_threads.append(server_thread)
+            server_thread.start()
+
+    def start(self):
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.bind(('0.0.0.0', 25565))
+        self.listen(5)        
+        logger.info("==========================")
+        logger.info("Started Python Coordinator")
+        logger.info("==========================")
+        self.run()
 
 if __name__ == "__main__":
-    # Create a Server Instance
-    tcp_server = TCPServer()
+    tcp_server = TcpServer()
+    print("Starting TCP server")
     tcp_server.start()

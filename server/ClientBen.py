@@ -9,22 +9,21 @@ from state import State
 from threading import Thread
 import cloudpickle 
 import base64 
+import socketserver
+import threading
+import socket
 
 SERVER_IP = "ws://localhost:25565"
 
 if sys.version_info<(3,0):
     input = raw_input
 
-def client_task_wrapper(taskID):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(client_task(taskID))
-
-async def client_task(taskID):
+def client_task(taskID):
     state = State()
     state._ID = taskID
     state._pc = taskID
-    websocket = await websockets.connect(SERVER_IP)
+    websocket = socket.socket()
+    websocket.connect(("127.0.0.1", 25565))
     print(taskID + " calling synchronize PC: " + str(state._ID))
 
     message = {
@@ -37,11 +36,12 @@ async def client_task(taskID):
     print("Calling 'synchronize' on the server.")
     message_json = ujson.dumps(message)
 
-    await websocket.send(message_json)
+    websocket.sendall(message_json.encode('utf-8'))
     print(taskID + " called synchronize PC: " + str(state._ID))
 
-async def client_main():
-    websocket = await websockets.connect(SERVER_IP)
+def client_main():
+    websocket = socket.socket()
+    websocket.connect(("127.0.0.1", 25565))
 
     print("Sending message to server...")
 
@@ -54,13 +54,13 @@ async def client_main():
 
     message_json = ujson.dumps(message)
     
-    await websocket.send(message_json)
+    websocket.sendall(message_json.encode('utf-8'))
     
     print("Sent message to server")
 
     try:
         print("Starting client thread1")
-        t1 = Thread(target=client_task_wrapper, args=(str(1),), daemon=True)
+        t1 = Thread(target=client_task, args=(str(1),), daemon=True)
         t1.start()
     except Exception as ex:
         print("[ERROR] Failed to start client thread1.")
@@ -70,7 +70,7 @@ async def client_main():
 
     try:
         print("Starting client thread2")
-        t2 = Thread(target=client_task_wrapper, args=(str(2),), daemon=True)
+        t2 = Thread(target=client_task, args=(str(2),), daemon=True)
         t2.start()
     except Exception as ex:
         print("[ERROR] Failed to start client thread2.")
@@ -79,9 +79,7 @@ async def client_main():
     t2.join()
 
 if __name__ == "__main__":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(client_main())
+    client_main()
     
 """
 Changes:
