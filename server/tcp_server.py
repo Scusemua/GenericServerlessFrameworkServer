@@ -79,8 +79,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
-        function_name = message['function_name']
+        #function_name = message['function_name']
         state = cloudpickle.loads(base64.b64decode(message['state'])) 
+        function_name = state.function_name
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
         logger.debug("Trying to retrieve existing Synchronizer '%s'" % synchronizer_name)
@@ -172,8 +173,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
-        function_name = message['function_name']
+        #function_name = message['function_name']
         state = cloudpickle.loads(base64.b64decode(message['state'])) 
+        function_name = state.function_name
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
         logger.debug("Trying to retrieve existing Synchronizer '%s'" % synchronizer_name)

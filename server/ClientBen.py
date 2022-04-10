@@ -1,8 +1,3 @@
-import sys
-import _thread
-import websockets 
-import asyncio
-import time
 import ujson
 import uuid
 from counting_semaphore import CountingSemaphore
@@ -10,8 +5,6 @@ from state import State
 from threading import Thread
 import cloudpickle 
 import base64 
-import socketserver
-import threading
 import socket
 
 SERVER_IP = "ws://localhost:25565"
