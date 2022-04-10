@@ -100,9 +100,9 @@ class Synchronizer(object):
         return returnValue
 
     @Pyro4.oneway
-    def synchronize(self, method_name, state, **kwargs):
+    def synchronize(self, method_name, state, function_name, **kwargs):
         ID_arg = kwargs["ID"]
-        logger.debug("starting synchronize, method_name: " + str(method_name) + ", ID is: " + ID_arg)
+        logger.debug("starting synchronize, method_name: " + str(method_name) + ", ID is: " + ID_arg + ", Function name: " + function_name)
         
         try:
             _synchronizer_method = getattr(self._synchClass,method_name)

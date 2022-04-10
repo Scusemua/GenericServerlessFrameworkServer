@@ -79,6 +79,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
+        function_name = message['function_name']
         state = cloudpickle.loads(base64.b64decode(message['state'])) 
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
@@ -111,16 +112,16 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 # execute synchronize op but don't send result to client
                 if "keyword_arguments" in message:
                     keyword_arguments = message["keyword_arguments"]
-                    return_value = synchronizer.synchronize(method_name, state, **keyword_arguments)
+                    return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
                 else:
-                    return_value = synchronizer.synchronize(method_name, state)   
+                    return_value = synchronizer.synchronize(method_name, state, function_name)   
             else:
                 # execute synchronize op but don't send result to client
                 if "keyword_arguments" in message:
                     keyword_arguments = message["keyword_arguments"]
-                    return_value = synchronizer.synchronize(method_name, state, **keyword_arguments)
+                    return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
                 else:
-                    return_value = synchronizer.synchronize(method_name, state)
+                    return_value = synchronizer.synchronize(method_name, state, function_name)
                     
                     # TCP.send tuple [False, return_value] back to Client
                 
@@ -128,9 +129,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
             # rhc: FIX THIS here and in CREATE
             if "keyword_arguments" in message:
                 keyword_arguments = message["keyword_arguments"]
-                return_value = synchronizer.synchronize(method_name, state, **keyword_arguments)
+                return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
             else:
-                return_value =  synchronizer.synchronize(method_name, state)
+                return_value =  synchronizer.synchronize(method_name, state, function_name)
                 
             # send tuple to be consistent, and False to be consistent, i.e., get result if False
             # TCP.send tuple [False, return_value] back to Client
@@ -171,6 +172,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
+        function_name = message['function_name']
         state = cloudpickle.loads(base64.b64decode(message['state'])) 
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
@@ -184,9 +186,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
         
         if "keyword_arguments" in message:
             keyword_arguments = message["keyword_arguments"]
-            sync_ret_val = synchronizer.synchronize(method_name, state, **keyword_arguments)
+            sync_ret_val = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
         else:
-            sync_ret_val = synchronizer.synchronize(method_name, state)
+            sync_ret_val = synchronizer.synchronize(method_name, state, function_name)
         
         logger.debug("Synchronize returned: %s" % str(sync_ret_val))
             
