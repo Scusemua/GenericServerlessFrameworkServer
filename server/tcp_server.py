@@ -123,7 +123,8 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 else:
                     return_value = synchronizer.synchronize(method_name, state, function_name)
                     
-                    self.wfile.write(cloudpickle.dumps([False, return_value]))
+                    state.return_value = return_value
+                    self.wfile.write(cloudpickle.dumps([False, state]))
                 
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
@@ -133,8 +134,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
             else:
                 return_value =  synchronizer.synchronize(method_name, state, function_name)
                 
+            state.return_value = return_value
             # send tuple to be consistent, and False to be consistent, i.e., get result if False
-            self.wfile.write(cloudpickle.dumps([False, return_value]))
+            self.wfile.write(cloudpickle.dumps([False, state]))
 
     def create_obj(self, message = None):
         logger.debug("server.create() called.")
