@@ -4,7 +4,7 @@ class State(object):
         self._pc = pc
         self.restart = restart 
         self.return_value = return_value 
-        self.keyword_arguments = keyword_arguments 
+        self.keyword_arguments = keyword_arguments or {} 
     
     @property
     def id(self):

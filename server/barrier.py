@@ -19,7 +19,7 @@ class Barrier(MonitorSU):
         self._n = initial_n
 
         #self.convar = ConditionVariable(monitor = self, condition_name = "go")
-        self._go = super().get_condition_variable(condition_name = "go")
+        self._go = self.get_condition_variable(condition_name = "go")
     
     @property
     def n(self):

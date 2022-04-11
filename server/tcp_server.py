@@ -14,6 +14,7 @@ import socketserver
 import threading
 
 from synchronizer import Synchronizer
+from util import make_json_serializable, decode_and_deserialize
 
 # Set up logging.
 import logging 
@@ -79,7 +80,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
-        state = cloudpickle.loads(base64.b64decode(message['state'])) 
+        state = decode_and_deserialize(message["state"])
         function_name = state.id
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
@@ -100,39 +101,19 @@ class TCPHandler(socketserver.StreamRequestHandler):
         if isTryMethod: 
             # check if synchronize op will block, if yes tell client to terminate then call op
             # rhc: FIX THIS here and in CREATE: let 
-            if "keyword_arguments" in message:
-                keyword_arguments = state.keyword_arguments
-                return_value = synchronizer.trySynchronize("executesWait", state, **keyword_arguments)
-            else:
-                return_value =  synchronizer.trySynchronize("executesWait", state)
+            return_value =  synchronizer.trySynchronize(method_name, **state.keyword_arguments)
         
             if return_value == True:   # synchronize op will execute wait so tell client to terminate
                 self.wfile.write(cloudpickle.dumps([True, None]))
                 
                 # execute synchronize op but don't send result to client
-                if "keyword_arguments" in message:
-                    keyword_arguments = state.keyword_arguments
-                    return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
-                else:
-                    return_value = synchronizer.synchronize(method_name, state, function_name)   
+                return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
             else:
                 # execute synchronize op but don't send result to client
-                if "keyword_arguments" in message:
-                    keyword_arguments = state.keyword_arguments
-                    return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
-                else:
-                    return_value = synchronizer.synchronize(method_name, state, function_name)
-                    
-                    state.return_value = return_value
-                    self.wfile.write(cloudpickle.dumps([False, state]))
-                
+                return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
-            if "keyword_arguments" in message:
-                keyword_arguments = state.keyword_arguments
-                return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
-            else:
-                return_value =  synchronizer.synchronize(method_name, state, function_name)
+            return_value = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
                 
             state.return_value = return_value
             # send tuple to be consistent, and False to be consistent, i.e., get result if False
@@ -142,14 +123,11 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.create() called.")
         type_arg = message["type"]
         name = message["name"]
+        state = decode_and_deserialize(message["state"])
 
         synchronizer = Synchronizer()
 
-        if "keyword_arguments" in message:
-            keyword_arguments = state.keyword_arguments
-            synchronizer.create(type_arg, name, **keyword_arguments)
-        else:
-            synchronizer.create(type_arg, name, {})
+        synchronizer.create(type_arg, name, **state.keyword_arguments)
         
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
         logger.debug("Caching new Synchronizer with name '%s'" % synchronizer_name)
@@ -174,7 +152,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
-        state = cloudpickle.loads(base64.b64decode(message['state'])) 
+        state = decode_and_deserialize(message["state"])
         function_name = state.id
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
@@ -186,11 +164,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         
         logger.debug("Successfully found synchronizer")
         
-        if "keyword_arguments" in message:
-            keyword_arguments = state.keyword_arguments
-            sync_ret_val = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
-        else:
-            sync_ret_val = synchronizer.synchronize(method_name, state, function_name)
+        sync_ret_val = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
         
         logger.debug("Synchronize returned: %s" % str(sync_ret_val))
             

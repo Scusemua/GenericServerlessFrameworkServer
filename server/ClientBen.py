@@ -7,6 +7,8 @@ import cloudpickle
 import base64 
 import socket
 
+from util import make_json_serializable, decode_and_deserialize
+
 SERVER_IP = "ws://localhost:25565"
 
 def client_task(taskID):
@@ -20,7 +22,7 @@ def client_task(taskID):
         "op": "synchronize_async", 
         "name": "b", 
         "method_name": "wait_b", 
-        "state": base64.b64encode(cloudpickle.dumps(state)).decode('utf-8'), 
+        "state": make_json_serializable(state),
         "id": msg_id
     }
     print("Calling 'synchronize' on the server.")
@@ -33,14 +35,14 @@ def client_main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
         websocket.connect(("127.0.0.1", 25565))
         msg_id = str(uuid.uuid4())
-
+        state = State(ID = "local", restart = False, keyword_arguments = {"n": 2})
         print("Sending 'create' message to server. Message ID=" + msg_id)
 
         message = {
             "op": "create", 
             "type": "Barrier", 
             "name": "b", 
-            "keyword_arguments": {"n": 2},
+            "state": make_json_serializable(state),
             "id": msg_id
         }
         
