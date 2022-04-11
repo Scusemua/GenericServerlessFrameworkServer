@@ -109,8 +109,11 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 # execute synchronize op but don't send result to client
                 return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
             else:
-                # execute synchronize op but don't send result to client
+                # execute synchronize op and send result to client
                 return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
+                state.return_value = return_value
+                # send tuple to be consistent, and False to be consistent, i.e., get result if False
+                self.wfile.write(cloudpickle.dumps([False, state]))                
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
             return_value = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
