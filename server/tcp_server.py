@@ -101,7 +101,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
             # check if synchronize op will block, if yes tell client to terminate then call op
             # rhc: FIX THIS here and in CREATE: let 
             if "keyword_arguments" in message:
-                keyword_arguments = message["keyword_arguments"]
+                keyword_arguments = state.keyword_arguments
                 return_value = synchronizer.trySynchronize("executesWait", state, **keyword_arguments)
             else:
                 return_value =  synchronizer.trySynchronize("executesWait", state)
@@ -111,14 +111,14 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 
                 # execute synchronize op but don't send result to client
                 if "keyword_arguments" in message:
-                    keyword_arguments = message["keyword_arguments"]
+                    keyword_arguments = state.keyword_arguments
                     return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
                 else:
                     return_value = synchronizer.synchronize(method_name, state, function_name)   
             else:
                 # execute synchronize op but don't send result to client
                 if "keyword_arguments" in message:
-                    keyword_arguments = message["keyword_arguments"]
+                    keyword_arguments = state.keyword_arguments
                     return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
                 else:
                     return_value = synchronizer.synchronize(method_name, state, function_name)
@@ -129,7 +129,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
             if "keyword_arguments" in message:
-                keyword_arguments = message["keyword_arguments"]
+                keyword_arguments = state.keyword_arguments
                 return_value = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
             else:
                 return_value =  synchronizer.synchronize(method_name, state, function_name)
@@ -146,7 +146,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         synchronizer = Synchronizer()
 
         if "keyword_arguments" in message:
-            keyword_arguments = message["keyword_arguments"]
+            keyword_arguments = state.keyword_arguments
             synchronizer.create(type_arg, name, **keyword_arguments)
         else:
             synchronizer.create(type_arg, name, {})
@@ -187,7 +187,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("Successfully found synchronizer")
         
         if "keyword_arguments" in message:
-            keyword_arguments = message["keyword_arguments"]
+            keyword_arguments = state.keyword_arguments
             sync_ret_val = synchronizer.synchronize(method_name, state, function_name, **keyword_arguments)
         else:
             sync_ret_val = synchronizer.synchronize(method_name, state, function_name)
