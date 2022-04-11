@@ -47,9 +47,9 @@ class Barrier(MonitorSU):
     # Note: A thread may wait behind other threads to enter the monitor here and
     # in wait_b; we are checking only for go.wait_c(), not whether the current thread
     # is next to get the mutex lock (as in a Java try_acquire() on a semaphore).
-    def executes_wait(self, **kwargs):
+    def try_wait_b(self, **kwargs):
         # Does mutex.P as usual
-        super().enter_monitor(method_name = "executes_wait")
+        super().enter_monitor(method_name = "try_wait_b")
         
         # super.is_blocking has a side effect which is to make sure that exit_monitor below
         # does not do mutex.V, also that enter_monitor of wait_b that follows does not do mutex.P.

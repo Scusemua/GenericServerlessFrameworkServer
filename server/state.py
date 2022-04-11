@@ -1,9 +1,18 @@
 class State(object):
-    def __init__(self, ID = None, restart = False, pc = int(1), keyword_arguments = None, return_value = None):
+    def __init__(
+        self, 
+        ID : str = None, 
+        restart : bool = False, 
+        pc : int = int(1), 
+        keyword_arguments : dict = None, 
+        return_value = None, 
+        blocking : bool = None
+    ):
         self._ID = ID
         self._pc = pc
         self.restart = restart 
         self.return_value = return_value 
+        self.blocking = blocking
         self.keyword_arguments = keyword_arguments or {} 
     
     @property

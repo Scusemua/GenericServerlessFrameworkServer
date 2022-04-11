@@ -104,7 +104,8 @@ class TCPHandler(socketserver.StreamRequestHandler):
             return_value =  synchronizer.trySynchronize(method_name, **state.keyword_arguments)
         
             if return_value == True:   # synchronize op will execute wait so tell client to terminate
-                self.wfile.write(cloudpickle.dumps([True, None]))
+                state.blocking = True 
+                self.wfile.write(cloudpickle.dumps(state))
                 
                 # execute synchronize op but don't send result to client
                 return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
@@ -112,15 +113,17 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 # execute synchronize op and send result to client
                 return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
                 state.return_value = return_value
+                state.blocking = False 
                 # send tuple to be consistent, and False to be consistent, i.e., get result if False
-                self.wfile.write(cloudpickle.dumps([False, state]))                
+                self.wfile.write(cloudpickle.dumps(state))                
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
             return_value = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
                 
             state.return_value = return_value
+            state.blocking = False 
             # send tuple to be consistent, and False to be consistent, i.e., get result if False
-            self.wfile.write(cloudpickle.dumps([False, state]))
+            self.wfile.write(cloudpickle.dumps(state))
 
     def create_obj(self, message = None):
         logger.debug("server.create() called.")
