@@ -7,7 +7,7 @@ import cloudpickle
 import base64 
 import socket
 
-from util import make_json_serializable, decode_and_deserialize
+from util import make_json_serializable, decode_and_deserialize, send_object, recv_object
 
 SERVER_IP = "ws://localhost:25565"
 
@@ -27,8 +27,7 @@ def client_task(taskID):
     }
     print("Calling 'synchronize' on the server.")
     msg = ujson.dumps(message).encode('utf-8')
-    websocket.sendall(len(msg).to_bytes(2, byteorder='big'))
-    websocket.sendall(msg)
+    send_object(msg)
     print(taskID + " called synchronize PC: " + str(state._ID))
 
 def client_main():
@@ -47,8 +46,7 @@ def client_main():
         }
         
         msg = ujson.dumps(message).encode('utf-8')
-        websocket.sendall(len(msg).to_bytes(2, byteorder='big'))
-        websocket.sendall(msg)
+        send_object(msg, websocket)
         
         print("Sent 'create' message to server")
 
