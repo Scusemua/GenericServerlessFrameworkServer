@@ -1,8 +1,9 @@
 class State(object):
-    def __init__(self, ID = 0, function_name = None):
+    def __init__(self, ID = 0, function_name = None, restart = False):
         self._ID = ID
         self._pc = int(1)
         self._function_name = function_name
+        self.restart = restart 
     
     @property
     def function_name(self):
