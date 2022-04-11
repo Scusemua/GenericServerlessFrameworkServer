@@ -10,9 +10,7 @@ import socket
 SERVER_IP = ("71.191.38.59",25565)
 
 def client_task(taskID, function_name):
-    state = State()
-    state._ID = taskID
-    state._pc = taskID
+    state = State(ID = function_name, pc = taskID)
     websocket = socket.socket()
     websocket.connect(SERVER_IP)
     msg_id = str(uuid.uuid4())
@@ -24,7 +22,6 @@ def client_task(taskID, function_name):
         "method_name": "wait_b", 
         "state": base64.b64encode(cloudpickle.dumps(state)).decode('utf-8'), 
         "keyword_arguments": {"ID": taskID},
-        "function_name": function_name,
         "id": msg_id
     }
     print("Calling 'synchronize' on the server.")
