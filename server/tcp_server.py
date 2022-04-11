@@ -107,7 +107,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 return_value =  synchronizer.trySynchronize("executesWait", state)
         
             if return_value == True:   # synchronize op will execute wait so tell client to terminate
-                # TCP.send a tuple [True, None] back to Client
+                self.wfile.write(cloudpickle.dumps([True, None]))
                 
                 # execute synchronize op but don't send result to client
                 if "keyword_arguments" in message:
@@ -123,7 +123,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 else:
                     return_value = synchronizer.synchronize(method_name, state, function_name)
                     
-                    # TCP.send tuple [False, return_value] back to Client
+                    self.wfile.write(cloudpickle.dumps([False, return_value]))
                 
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
@@ -134,7 +134,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 return_value =  synchronizer.synchronize(method_name, state, function_name)
                 
             # send tuple to be consistent, and False to be consistent, i.e., get result if False
-            # TCP.send tuple [False, return_value] back to Client
+            self.wfile.write(cloudpickle.dumps([False, return_value]))
 
     def create_obj(self, message = None):
         logger.debug("server.create() called.")
@@ -161,7 +161,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         # Write ACK back to client. #
         #############################
         logger.info("Sending ACK to client %s for CREATE operation." % self.client_address[0])
-        self.wfile.write(ujson.dumps(resp).encode('utf-8'))            
+        self.wfile.write(ujson.dumps(resp).encode('utf-8'))
         logger.info("Sent ACK to client %s for CREATE operation." % self.client_address[0])
 
     def setup_server(self, message = None):
