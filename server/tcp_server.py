@@ -126,11 +126,33 @@ class TCPHandler(socketserver.StreamRequestHandler):
     def recv_object(self):
         """
         Receive an object from a remote entity via the given websocket.
+
+        The TCP server uses a "streaming" API that is implemented using file handles (or rather the API looks like we're just using file handles).
         """
-        incoming_size = self.rfile.read(2)
+        # Read the size of the incoming serialized object.
+        incoming_size = self.rfile.read(2) 
+        # Convert bytes of size to integer.
         incoming_size = int.from_bytes(incoming_size, 'big')
         logger.info("Will receive another message of size %d bytes" % incoming_size)
+        # Read serialized object (now that we know how big it'll be).
         data = self.rfile.read(incoming_size).strip()
+
+        return data 
+
+    def send_serialized_object(self, obj):
+        """
+        Send an ALREADY SERIALIZED object to the connected client.
+
+        Serialize the object before calling this function via:
+            obj = cloudpickle.dumps(obj)
+
+        Arguments:
+        ----------
+            obj (bytes):
+                The already-serialized object that we are sending to a remote entity (presumably an AWS Lambda executor).
+        """
+        self.wfile.write(len(obj))                  # Tell the client how many bytes we're sending.
+        self.wfile.write(obj)                       # Then send the object.
 
     def create_obj(self, message = None):
         logger.debug("server.create() called.")
@@ -180,16 +202,6 @@ class TCPHandler(socketserver.StreamRequestHandler):
         sync_ret_val = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
         
         logger.debug("Synchronize returned: %s" % str(sync_ret_val))
-    
-    def send_serialized_object(self, obj):
-        """
-        Send an ALREADY SERIALIZED object to the connected client.
-
-        Serialize the object before calling this function via:
-            obj = cloudpickle.dumps(obj)
-        """
-        self.wfile.write(len(obj))                  # Tell the client how many bytes we're sending.
-        self.wfile.write(obj)                       # Then send the object.
 
 class TCPServer(object):
     def __init__(self):
