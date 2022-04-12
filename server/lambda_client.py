@@ -61,16 +61,17 @@ def recv_object(websocket):
     return websocket.recv(incoming_size).strip()
 
 def client_task(taskID, function_name):
-    state = State(ID = function_name, pc = taskID)
+    state = State(ID = function_name)
     websocket = socket.socket()
     websocket.connect(SERVER_IP)
     msg_id = str(uuid.uuid4())
     print(taskID + " calling synchronize PC: " + str(state._ID) + ". Message ID=" +msg_id)
 
+    state._pc = 2
     message = {
-        "op": "synchronize_async", 
+        "op": "synchronize_sync", 
         "name": "b", 
-        "method_name": "wait_b", 
+        "method_name": "try_wait_b", 
         "state": base64.b64encode(cloudpickle.dumps(state)).decode('utf-8'), 
         "keyword_arguments": {"ID": taskID},
         "id": msg_id
@@ -82,6 +83,15 @@ def client_task(taskID, function_name):
 
     data = recv_object(websocket)               # Should just be a serialized state object.
     state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
+    blocking = state_from_server.blocking
+
+    if blocking:
+        print("Blocking is true. Terminating.")
+        return 
+    else:
+        return_value = state_from_server.return_value
+        state = state_from_server
+        print(str(return_value)) 
 
 def client_main(context):
     function_name = context.function_name

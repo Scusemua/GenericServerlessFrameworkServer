@@ -19,9 +19,5 @@ class State(object):
     def id(self):
         return self._ID
 
-    @property
-    def function_name(self):
-        return self._function_name
-
     def __str__(self):
         return "State(ID=" + self._ID + ", PC=" + self._pc + ")"
