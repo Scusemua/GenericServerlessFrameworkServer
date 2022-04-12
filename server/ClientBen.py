@@ -11,11 +11,32 @@ from util import make_json_serializable, decode_and_deserialize
 
 SERVER_IP = "ws://localhost:25565"
 
+"""
+Local Client
+------------
+
+This is the version of the client code that I've been running locally on my Desktop. 
+
+This has been kept up-to-date with the rest of the codebase.
+"""
+
 def send_object(obj, websocket):
     """
     Send obj to a remote entity via the given websocket.
+    The TCP server uses a different API (streaming via file handles), so it's implemented differently. 
+    This different API is in tcp_server.py.    
+
+    Arguments:
+    ----------
+        obj (bytes):
+            The object to be sent. Should already be serialized via cloudpickle.dumps().
+        
+        websocket (socket.socket):
+            Socket connected to a remote client.
     """
+    # First, we send the number of bytes that we're going to send.
     websocket.sendall(len(obj).to_bytes(2, byteorder='big'))
+    # Next, we send the serialized object itself. 
     websocket.sendall(obj)
 
 def recv_object(websocket):
@@ -23,14 +44,24 @@ def recv_object(websocket):
     Receive an object from a remote entity via the given websocket.
 
     This is used by clients. There's another recv_object() function in TCP server.
-    The TCP server uses a different API (streaming via file handles), so it's implemented differently.  
+    The TCP server uses a different API (streaming via file handles), so it's implemented differently. 
+    This different API is in tcp_server.py.
+
+    Arguments:
+    ----------
+        websocket (socket.socket):
+            Socket connected to a remote client.    
     """
+    # First, we receive the number of bytes of the incoming serialized object.
     incoming_size = websocket.recv(2)
+    # Convert the bytes representing the size of the incoming serialized object to an integer.
     incoming_size = int.from_bytes(incoming_size, 'big')
     print("Will receive another message of size %d bytes" % incoming_size)
+    # Finally, we read the serialized object itself.
     return websocket.recv(incoming_size).strip()
 
 def client_task(taskID):
+    # Connect to the TCP server.
     state = State(pc = taskID, ID="local", restart = False, keyword_arguments = {"ID": taskID})
     websocket = socket.socket()
     websocket.connect(("127.0.0.1", 25565))
@@ -45,10 +76,11 @@ def client_task(taskID):
         "id": msg_id
     }
     print("Calling 'synchronize' on the server.")
-    msg = ujson.dumps(message).encode('utf-8')
-    send_object(msg)
+    msg = ujson.dumps(message).encode('utf-8') 
+    send_object(msg) # Send the message to the TCP server.
     print(taskID + " called synchronize PC: " + str(state._ID))
 
+    # Get the response.
     data = recv_object(websocket)               # Should just be a serialized state object.
     state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
 
@@ -68,11 +100,11 @@ def client_main():
         }
         
         msg = ujson.dumps(message).encode('utf-8')
-        send_object(msg, websocket)
+        send_object(msg, websocket) # Send to the TCP server.
         
         print("Sent 'create' message to server")
 
-        # Receive data from the server and shut down
+        # Receive data. This should just be an ACK, as the TCP server will 'ACK' our create() calls.
         received = str(websocket.recv(1024), "utf-8")
 
         try:
