@@ -6,6 +6,9 @@ from state import State
 import importlib
 from pydoc import locate
 from synchronizer_thread import synchronizerThread
+import boto3 
+import ujson
+import cloudpickle
 
 import logging 
 logger = logging.getLogger(__name__)
@@ -20,6 +23,8 @@ logger.addHandler(ch)
 
  # TODO: The serverless function needs to pass its name to synchronize_sync/async so that it can be restarted.
 
+aws_region = 'us-east-1'
+
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class Synchronizer(object):
@@ -29,6 +34,7 @@ class Synchronizer(object):
     def __init__(self):
         self._name = "Synchronizer"
         self.threadID = 0
+        self.lambda_client = boto3.client("lambda", region_name = aws_region)
 
     #def init(self, synchronizer_class_name = None, synchronizer_object_name = None, value):
 
@@ -100,9 +106,9 @@ class Synchronizer(object):
         return returnValue
 
     @Pyro4.oneway
-    def synchronize(self, method_name, state, function_name, **kwargs):
+    def synchronize(self, method_name, state, **kwargs):
         ID_arg = kwargs["ID"]
-        logger.debug("starting synchronize, method_name: " + str(method_name) + ", ID is: " + ID_arg + ", Function name: " + function_name)
+        logger.debug("starting synchronize, method_name: " + str(method_name) + ", ID is: " + ID_arg)
         
         try:
             _synchronizer_method = getattr(self._synchClass,method_name)
@@ -127,6 +133,12 @@ class Synchronizer(object):
 
         #if restart:
         #	restart serverless function, needs its ID?
+        if restart:
+            state.restart = True 
+            function_name = state.id 
+            # TODO: Restart the function (invoke it).
+            logger.info("Restarting Lambda function %s." % function_name)
+            self.lambda_client.invoke(FunctionName=function_name, InvocationType='Event', Payload=cloudpickle.dumps(state))
         
         return returnValue
 

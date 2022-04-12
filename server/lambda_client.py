@@ -93,7 +93,29 @@ def client_task(taskID, function_name):
         state = state_from_server
         print(str(return_value)) 
 
-def client_main(context):
+def init_state(state):
+    """
+    
+    """
+    pass 
+
+def client_main(event, context):
+    """
+    Main driver method.
+
+    Arguments:
+    ----------
+        context (AWS Context object):
+            See https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
+
+        event (dict):
+            Invocation payload passed by whoever/whatever invoked us.
+    """
+    state = decode_and_deserialize[event["state"]]
+
+    if not state.restart:
+        init_state() # Initialize the state variables one time.
+
     function_name = context.function_name
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
         print("Connecting to " + str(SERVER_IP))
@@ -162,7 +184,7 @@ def old_handler():
     }
 
 def lambda_handler(event, context):
-    client_main(context)
+    client_main(event, context)
     return {
         'statusCode': 200,
         'body': json.dumps("Hello, world!")

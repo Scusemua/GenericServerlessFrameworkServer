@@ -105,17 +105,17 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 self.send_serialized_object(cloudpickle.dumps(state))
                 
                 # execute synchronize op but don't send result to client
-                return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
+                return_value = synchronizer.synchronize(base_name, state, **state.keyword_arguments)
             else:
                 # execute synchronize op and send result to client
-                return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
+                return_value = synchronizer.synchronize(base_name, state, **state.keyword_arguments)
                 state.return_value = return_value
                 state.blocking = False 
                 # send tuple to be consistent, and False to be consistent, i.e., get result if False
                 self.send_serialized_object(cloudpickle.dumps(state))               
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
-            return_value = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
+            return_value = synchronizer.synchronize(method_name, state, **state.keyword_arguments)
                 
             state.return_value = return_value
             state.blocking = False 
@@ -188,7 +188,6 @@ class TCPHandler(socketserver.StreamRequestHandler):
         obj_name = message['name']
         method_name = message['method_name']
         state = decode_and_deserialize(message["state"])
-        function_name = state.id
 
         synchronizer_name = self._get_synchronizer_name(obj_type = None, name = obj_name)
         logger.debug("Trying to retrieve existing Synchronizer '%s'" % synchronizer_name)
@@ -199,7 +198,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         
         logger.debug("Successfully found synchronizer")
         
-        sync_ret_val = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
+        sync_ret_val = synchronizer.synchronize(method_name, state, **state.keyword_arguments)
         
         logger.debug("Synchronize returned: %s" % str(sync_ret_val))
 
