@@ -7,9 +7,28 @@ import cloudpickle
 import base64 
 import socket
 
-from util import make_json_serializable, decode_and_deserialize, send_object, recv_object
+from util import make_json_serializable, decode_and_deserialize
 
 SERVER_IP = "ws://localhost:25565"
+
+def send_object(obj, websocket):
+    """
+    Send obj to a remote entity via the given websocket.
+    """
+    websocket.sendall(len(obj).to_bytes(2, byteorder='big'))
+    websocket.sendall(obj)
+
+def recv_object(websocket):
+    """
+    Receive an object from a remote entity via the given websocket.
+
+    This is used by clients. There's another recv_object() function in TCP server.
+    The TCP server uses a different API (streaming via file handles), so it's implemented differently.  
+    """
+    incoming_size = websocket.recv(2)
+    incoming_size = int.from_bytes(incoming_size, 'big')
+    print("Will receive another message of size %d bytes" % incoming_size)
+    return websocket.recv(incoming_size).strip()
 
 def client_task(taskID):
     state = State(pc = taskID, ID="local", restart = False, keyword_arguments = {"ID": taskID})
@@ -29,6 +48,9 @@ def client_task(taskID):
     msg = ujson.dumps(message).encode('utf-8')
     send_object(msg)
     print(taskID + " called synchronize PC: " + str(state._ID))
+
+    data = recv_object(websocket)               # Should just be a serialized state object.
+    state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
 
 def client_main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:

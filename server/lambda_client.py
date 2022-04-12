@@ -7,9 +7,28 @@ import cloudpickle
 import base64 
 import socket
 
-from util import make_json_serializable, decode_and_deserialize, send_object, recv_object
+from util import make_json_serializable, decode_and_deserialize
 
 SERVER_IP = ("71.191.38.59",25565)
+
+def send_object(obj, websocket):
+    """
+    Send obj to a remote entity via the given websocket.
+    """
+    websocket.sendall(len(obj).to_bytes(2, byteorder='big'))
+    websocket.sendall(obj)
+
+def recv_object(websocket):
+    """
+    Receive an object from a remote entity via the given websocket.
+
+    This is used by clients. There's another recv_object() function in TCP server.
+    The TCP server uses a different API (streaming via file handles), so it's implemented differently.
+    """
+    incoming_size = websocket.recv(2)
+    incoming_size = int.from_bytes(incoming_size, 'big')
+    print("Will receive another message of size %d bytes" % incoming_size)
+    return websocket.recv(incoming_size).strip()
 
 def client_task(taskID, function_name):
     state = State(ID = function_name, pc = taskID)
@@ -28,9 +47,11 @@ def client_task(taskID, function_name):
     }
     print("Calling 'synchronize' on the server.")
     msg = json.dumps(message).encode('utf-8')
-    websocket.sendall(len(msg).to_bytes(2, byteorder='big'))
-    websocket.sendall(msg)
+    send_object(msg)
     print(taskID + " called synchronize PC: " + str(state._ID))
+
+    data = recv_object(websocket)               # Should just be a serialized state object.
+    state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
 
 def client_main(context):
     function_name = context.function_name
@@ -52,13 +73,12 @@ def client_main(context):
         }
         
         msg = json.dumps(message).encode('utf-8')
-        websocket.sendall(len(msg).to_bytes(2, byteorder='big'))
-        websocket.sendall(msg)
+        send_object(msg)
         
         print("Sent 'create' message to server")
 
         # Receive data from the server and shut down
-        received = str(websocket.recv(1024), "utf-8")
+        ack = recv_object()
 
         try:
             print("Starting client thread1")

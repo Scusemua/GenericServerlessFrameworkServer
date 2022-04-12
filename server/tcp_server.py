@@ -50,10 +50,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.info("Thread Name:{}".format(threading.current_thread().name))
 
         try:
-            incoming_size = self.rfile.read(2)
-            incoming_size = int.from_bytes(incoming_size, 'big')
-            logger.info("Will receive another message of size %d bytes" % incoming_size)
-            data = self.rfile.read(incoming_size).strip()
+            data = self.recv_object()
             #logger.info("Received %d bytes from client: %s" % (len(data), str(data)))
             json_message = ujson.loads(data)
             message_id = json_message["id"]
@@ -105,7 +102,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         
             if return_value == True:   # synchronize op will execute wait so tell client to terminate
                 state.blocking = True 
-                self.wfile.write(cloudpickle.dumps(state))
+                self.send_serialized_object(cloudpickle.dumps(state))
                 
                 # execute synchronize op but don't send result to client
                 return_value = synchronizer.synchronize(base_name, state, function_name, **state.keyword_arguments)
@@ -115,7 +112,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
                 state.return_value = return_value
                 state.blocking = False 
                 # send tuple to be consistent, and False to be consistent, i.e., get result if False
-                self.wfile.write(cloudpickle.dumps(state))                
+                self.send_serialized_object(cloudpickle.dumps(state))               
         else:  # not a "try" so do synchronization op and send result to waiting client
             # rhc: FIX THIS here and in CREATE
             return_value = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
@@ -123,7 +120,17 @@ class TCPHandler(socketserver.StreamRequestHandler):
             state.return_value = return_value
             state.blocking = False 
             # send tuple to be consistent, and False to be consistent, i.e., get result if False
-            self.wfile.write(cloudpickle.dumps(state))
+            
+            self.send_serialized_object(cloudpickle.dumps(state))
+
+    def recv_object(self):
+        """
+        Receive an object from a remote entity via the given websocket.
+        """
+        incoming_size = self.rfile.read(2)
+        incoming_size = int.from_bytes(incoming_size, 'big')
+        logger.info("Will receive another message of size %d bytes" % incoming_size)
+        data = self.rfile.read(incoming_size).strip()
 
     def create_obj(self, message = None):
         logger.debug("server.create() called.")
@@ -173,7 +180,16 @@ class TCPHandler(socketserver.StreamRequestHandler):
         sync_ret_val = synchronizer.synchronize(method_name, state, function_name, **state.keyword_arguments)
         
         logger.debug("Synchronize returned: %s" % str(sync_ret_val))
-            
+    
+    def send_serialized_object(self, obj):
+        """
+        Send an ALREADY SERIALIZED object to the connected client.
+
+        Serialize the object before calling this function via:
+            obj = cloudpickle.dumps(obj)
+        """
+        self.wfile.write(len(obj))                  # Tell the client how many bytes we're sending.
+        self.wfile.write(obj)                       # Then send the object.
 
 class TCPServer(object):
     def __init__(self):
