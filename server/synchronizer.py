@@ -143,6 +143,13 @@ class Synchronizer(object):
         return returnValue
 
     def doMethodCall(self, PythonThreadID, myName, synchronizer, synchronizer_method, **kwargs):
+        """
+        Call a method.
+
+        Arguments:
+        ----------
+            TODO: Fill in this documentation.
+        """
         logger.debug ("starting caller thread to make the call")
         callerThread = synchronizerThread(PythonThreadID, myName,  synchronizer, synchronizer_method, **kwargs)
         callerThread.start()
