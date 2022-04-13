@@ -34,11 +34,10 @@ def isTry_and_getMethodName(name):
     return name, False
 
 class TCPHandler(socketserver.StreamRequestHandler):
-    # def __init__(self, request, client_address, server):
-    #     super().__init__(request, client_address, server)
-    #     logger.info("Created TCPHandler")
-
     def handle(self):
+        """
+        TCP handler for incoming requests from AWS Lambda functions.
+        """
         logger.info("Recieved one request from {}".format(self.client_address[0]))
 
         self.action_handlers = {
@@ -72,7 +71,15 @@ class TCPHandler(socketserver.StreamRequestHandler):
         return str(name) 
 
     def synchronize_sync(self, message = None):
-        logger.debug("server.synchronize_async() called.")
+        """
+        Synchronous synchronization.
+
+        Key-word arguments:
+        -------------------
+            message (dict):
+                The payload from the AWS Lambda function.
+        """
+        logger.debug("server.synchronize_sync() called.")
         obj_name = message['name']
         method_name = message['method_name']
         state = decode_and_deserialize(message["state"])
@@ -153,6 +160,14 @@ class TCPHandler(socketserver.StreamRequestHandler):
         self.wfile.write(obj)                       # Then send the object.
 
     def create_obj(self, message = None):
+        """
+        Called by a remote Lambda to create an object here on the TCP server.
+
+        Key-word arguments:
+        -------------------
+            message (dict):
+                The payload from the AWS Lambda function.
+        """        
         logger.debug("server.create() called.")
         type_arg = message["type"]
         name = message["name"]
@@ -179,7 +194,12 @@ class TCPHandler(socketserver.StreamRequestHandler):
 
     def close_obj(self, message = None):
         """
-        Delete the synchronizer object or whatever.
+        Called by a remote Lambda to delete an object here on the TCP server.
+
+        Key-word arguments:
+        -------------------
+            message (dict):
+                The payload from the AWS Lambda function.
         """
         raise NotImplementedError("Haven't implemented this yet.")
 
@@ -188,6 +208,14 @@ class TCPHandler(socketserver.StreamRequestHandler):
         pass 
     
     def synchronize_async(self, message = None):
+        """
+        Asynchronous synchronization.
+
+        Key-word arguments:
+        -------------------
+            message (dict):
+                The payload from the AWS Lambda function.
+        """        
         logger.debug("server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
