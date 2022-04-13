@@ -177,6 +177,12 @@ class TCPHandler(socketserver.StreamRequestHandler):
         self.wfile.write(ujson.dumps(resp).encode('utf-8'))
         logger.info("Sent ACK to client %s for CREATE operation." % self.client_address[0])
 
+    def close_obj(self, message = None):
+        """
+        Delete the synchronizer object or whatever.
+        """
+        raise NotImplementedError("Haven't implemented this yet.")
+
     def setup_server(self, message = None):
         logger.debug("server.setup() called.")
         pass 
