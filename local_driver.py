@@ -1,13 +1,12 @@
-import ujson
 import uuid
-from counting_semaphore import CountingSemaphore
-from state import State
 from threading import Thread
 import cloudpickle 
-import base64 
 import socket
+import uuid 
 
-from util import make_json_serializable, decode_and_deserialize
+from server.counting_semaphore import CountingSemaphore
+from server.state import State
+from server.util import make_json_serializable, decode_and_deserialize
 
 SERVER_IP = "ws://localhost:25565"
 

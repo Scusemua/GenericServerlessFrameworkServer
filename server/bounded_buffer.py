@@ -4,7 +4,18 @@ import threading
 import _thread
 import time
 
-class BoundedBuffer (MonitorSU):
+import logging 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+
+logger.addHandler(ch)
+
+class BoundedBuffer(MonitorSU):
     def __init__(self, initial_capacity = 0, monitor_name = None):
         super(BoundedBuffer, self).__init__(monitor_name=monitor_name)
         self._capacity = initial_capacity
@@ -14,15 +25,15 @@ class BoundedBuffer (MonitorSU):
         self._buffer=[]
         self._notFull=super().get_condition_variable(condition_name="notFull")
         self._notEmpty=super().get_condition_variable(condition_name="notEmpty")
-        print(kwargs)
+        logger.debug(kwargs)
         self._in=0
         self._out=0
 
 
     def deposit(self, value=None, **kwargs):
         super().enter_monitor(method_name="deposit")
-        print(" deposit() entered monitor, len(self._notFull) ="+str(len(self._notFull))+",self._capacity="+str(self._capacity))
-        print(" deposit() entered monitor, len(self._notEmpty) ="+str(len(self._notEmpty))+",self._capacity="+str(self._capacity))
+        logger.debug(" deposit() entered monitor, len(self._notFull) ="+str(len(self._notFull))+",self._capacity="+str(self._capacity))
+        logger.debug(" deposit() entered monitor, len(self._notEmpty) ="+str(len(self._notEmpty))+",self._capacity="+str(self._capacity))
         if self._fullSlots==self._capacity:
             self._notFull.wait_c()
         self._buffer.insert(self._in,value)
@@ -35,8 +46,8 @@ class BoundedBuffer (MonitorSU):
 
     def withdraw(self, **kwargs):
         super().enter_monitor(method_name = "withdraw")
-        print(" withdraw() entered monitor, len(self._notFull) ="+str(len(self._notFull))+",self._capacity="+str(self._capacity))
-        print(" withdraw() entered monitor, len(self._notEmpty) ="+str(len(self._notEmpty))+",self._capacity="+str(self._capacity))
+        logger.debug(" withdraw() entered monitor, len(self._notFull) ="+str(len(self._notFull))+",self._capacity="+str(self._capacity))
+        logger.debug(" withdraw() entered monitor, len(self._notEmpty) ="+str(len(self._notEmpty))+",self._capacity="+str(self._capacity))
         value = 0
         if self._fullSlots==0:
             self._notEmpty.wait_c()
@@ -50,14 +61,14 @@ class BoundedBuffer (MonitorSU):
 
 def taskD(b : BoundedBuffer):
     time.sleep(1)
-    print("Calling deposit")
+    logger.debug("Calling deposit")
     b.deposit("A")
-    print("Successfully called deposit")
+    logger.debug("Successfully called deposit")
 
 def taskW(b : BoundedBuffer):
-    print("Calling withdraw")
+    logger.debug("Calling withdraw")
     value = b.withdraw()
-    print("Successfully called withdraw")
+    logger.debug("Successfully called withdraw")
 
 
 def main():
@@ -65,28 +76,28 @@ def main():
     b.init()
     #b.deposit(value = "A")
     #value = b.withdraw()
-    #print(value)
+    #logger.debug(value)
     #b.deposit(value = "B")
     #value = b.withdraw()
-    #print(value)
+    #logger.debug(value)
 
     try:
-        print("Starting D thread")
+        logger.debug("Starting D thread")
         _thread.start_new_thread(taskD, (b,))
     except Exception as ex:
-        print("[ERROR] Failed to start first thread.")
-        print(ex)
+        logger.debug("[ERROR] Failed to start first thread.")
+        logger.debug(ex)
 
     try:
-        print("Starting first thread")
+        logger.debug("Starting first thread")
         _thread.start_new_thread(taskW, (b,))
     except Exception as ex:
-        print("[ERROR] Failed to start first thread.")
-        print(ex)
+        logger.debug("[ERROR] Failed to start first thread.")
+        logger.debug(ex)
 
-    print("Sleeping")
+    logger.debug("Sleeping")
     time.sleep(2)
-    print("Done sleeping")
+    logger.debug("Done sleeping")
 
 if __name__=="__main__":
     main()

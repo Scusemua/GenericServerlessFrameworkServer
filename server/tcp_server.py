@@ -201,7 +201,11 @@ class TCPHandler(socketserver.StreamRequestHandler):
             message (dict):
                 The payload from the AWS Lambda function.
         """
-        raise NotImplementedError("Haven't implemented this yet.")
+        type_arg = message["type"]
+        name = message["name"]
+        state = decode_and_deserialize(message["state"])
+
+        logger.debug("Received close_obj request for object with name '%s' and type %s" % (name, type_arg))
 
     def setup_server(self, message = None):
         logger.debug("server.setup() called.")
