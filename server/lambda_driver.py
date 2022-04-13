@@ -6,6 +6,7 @@ from threading import Thread
 import cloudpickle 
 import base64 
 import socket
+import uuid 
 
 from util import make_json_serializable, decode_and_deserialize
 
@@ -112,6 +113,8 @@ def client_main(event, context):
             Invocation payload passed by whoever/whatever invoked us.
     """
     state = decode_and_deserialize[event["state"]]
+    task_id = state.task_id 
+    print("Task %s has started executing." % task_id)
 
     if not state.restart:
         init_state() # Initialize the state variables one time.
@@ -142,25 +145,28 @@ def client_main(event, context):
         # Receive data. This should just be an ACK, as the TCP server will 'ACK' our create() calls.
         ack = recv_object()
 
-        try:
-            print("Starting client thread1")
-            t1 = Thread(target=client_task, args=(str(1),function_name,), daemon=True)
-            t1.start()
-        except Exception as ex:
-            print("[ERROR] Failed to start client thread1.")
-            print(ex)
+        # Just call this directly.
+        client_task(str(1), function_name)
 
-        t1.join()
+        # try:
+        #     print("Starting client thread1")
+        #     t1 = Thread(target=client_task, args=(str(1),function_name,), daemon=True)
+        #     t1.start()
+        # except Exception as ex:
+        #     print("[ERROR] Failed to start client thread1.")
+        #     print(ex)
 
-        try:
-            print("Starting client thread2")
-            t2 = Thread(target=client_task, args=(str(2), function_name,), daemon=True)
-            t2.start()
-        except Exception as ex:
-            print("[ERROR] Failed to start client thread2.")
-            print(ex)
+        # t1.join()
+
+        # try:
+        #     print("Starting client thread2")
+        #     t2 = Thread(target=client_task, args=(str(2), function_name,), daemon=True)
+        #     t2.start()
+        # except Exception as ex:
+        #     print("[ERROR] Failed to start client thread2.")
+        #     print(ex)
         
-        t2.join()
+        # t2.join()
 
 def old_handler():
     uri = "PYRO:obj_6addf78ee967485c8f76ff0ef3d0172f@71.191.38.59:25565"

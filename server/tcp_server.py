@@ -51,7 +51,6 @@ class TCPHandler(socketserver.StreamRequestHandler):
 
         try:
             data = self.recv_object()
-            #logger.info("Received %d bytes from client: %s" % (len(data), str(data)))
             json_message = ujson.loads(data)
             message_id = json_message["id"]
             logger.debug("Received message (size=%d bytes) from client %s with ID=%s" % (len(data), self.client_address[0], message_id))
@@ -70,7 +69,6 @@ class TCPHandler(socketserver.StreamRequestHandler):
 
         The key is a string of the form <type>-<name>.
         """
-        #return "{0}-{1}".format(obj_type, name)
         return str(name) 
 
     def synchronize_sync(self, message = None):

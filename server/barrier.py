@@ -55,7 +55,7 @@ class Barrier(MonitorSU):
         # does not do mutex.V, also that enter_monitor of wait_b that follows does not do mutex.P.
         # This males executes_wait ; wait_b atomic
         
-        block = super().is_blocking(self._go._num_waiting_threads < (self._n - 1))
+        block = super().is_blocking(len(self._go) < (self._n - 1))
         
         # Does not do mutex.V, so we will still have the mutex lock when we next call
         # enter_monitor in wait_b
