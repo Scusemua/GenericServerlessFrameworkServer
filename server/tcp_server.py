@@ -12,6 +12,7 @@ import sys
 import socket
 import socketserver
 import threading
+import traceback
 
 from synchronizer import Synchronizer
 from util import make_json_serializable, decode_and_deserialize
@@ -143,6 +144,12 @@ class TCPHandler(socketserver.StreamRequestHandler):
         incoming_size = self.rfile.read(2) 
         # Convert bytes of size to integer.
         incoming_size = int.from_bytes(incoming_size, 'big')
+
+        if incoming_size == 0:
+            print("[WARNING] Incoming message size is 0.")
+            traceback.print_stack(file=sys.stdout)
+            return None 
+
         logger.info("Will receive another message of size %d bytes" % incoming_size)
         # Read serialized object (now that we know how big it'll be).
         data = self.rfile.read(incoming_size).strip()

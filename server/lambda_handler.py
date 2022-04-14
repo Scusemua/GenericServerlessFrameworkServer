@@ -64,36 +64,41 @@ def recv_object(websocket):
 
 def client_task(taskID, function_name):
     state = State(ID = function_name)
-    websocket = socket.socket()
-    websocket.connect(SERVER_IP)
-    msg_id = str(uuid.uuid4())
-    print(taskID + " calling synchronize PC: " + str(state._ID) + ". Message ID=" +msg_id)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
+        websocket.connect(SERVER_IP)
+        msg_id = str(uuid.uuid4())
+        print(taskID + " calling synchronize PC: " + str(state._ID) + ". Message ID=" +msg_id)
 
-    state.keyword_arguments = {"ID": taskID}
-    state._pc = 2
-    message = {
-        "op": "synchronize_sync", 
-        "name": "b", 
-        "method_name": "try_wait_b", 
-        "state": make_json_serializable(state),
-        "id": msg_id
-    }
-    print("Calling 'synchronize' on the server.")
-    msg = json.dumps(message).encode('utf-8')
-    send_object(msg, websocket)
-    print(taskID + " called synchronize PC: " + str(state._ID))
+        state.keyword_arguments = {"ID": taskID}
+        state._pc = 2
+        message = {
+            "op": "synchronize_sync", 
+            "name": "b", 
+            "method_name": "try_wait_b", 
+            "state": make_json_serializable(state),
+            "id": msg_id
+        }
+        print("Calling 'synchronize' on the server.")
+        msg = json.dumps(message).encode('utf-8')
+        send_object(msg, websocket)
+        print(taskID + " called synchronize PC: " + str(state._ID))
 
-    data = recv_object(websocket)               # Should just be a serialized state object.
-    state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
-    blocking = state_from_server.blocking
+        data = recv_object(websocket)               # Should just be a serialized state object.
+        state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
+        blocking = state_from_server.blocking
 
-    if blocking:
-        print("Blocking is true. Terminating.")
-        return 
-    else:
-        return_value = state_from_server.return_value
-        state = state_from_server
-        print(str(return_value)) 
+        if blocking:
+            print("Blocking is true. Terminating.")
+            websocket.shutdown(socket.SHUT_RDWR)
+            websocket.close()
+            return 
+        else:
+            return_value = state_from_server.return_value
+            state = state_from_server
+            print(str(return_value)) 
+            print("=== FINISHED ===")
+            websocket.shutdown(socket.SHUT_RDWR)
+            websocket.close()            
 
 def init_state(state):
     """
@@ -115,11 +120,16 @@ def client_main(event, context):
     """
     print("event: " + str(event))
     state = decode_and_deserialize(event["state"])
+    do_create = event["do_create"]
     task_id = state.task_id 
     print("Task %s has started executing." % task_id)
 
     if not state.restart:
         init_state(state) # Initialize the state variables one time.
+    else:
+        print("Restart is true. Exiting now.")
+        print("state._pc = %d" % state._pc)
+        return 
 
     function_name = context.function_name
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
@@ -128,28 +138,32 @@ def client_main(event, context):
         print("Succcessfully connected!")
         msg_id = str(uuid.uuid4())
 
-        print("Sending 'create' message to server. Message ID=" + msg_id)
+        if do_create:
+            print("Sending 'create' message to server. Message ID=" + msg_id)
 
-        state.keyword_arguments = {"n": 2}
-        message = {
-            "op": "create", 
-            "type": "Barrier", 
-            "name": "b", 
-            "function_name": function_name,
-            "state": make_json_serializable(state),
-            "id": msg_id
-        }
-        
-        msg = json.dumps(message).encode('utf-8')
-        send_object(msg, websocket)
-        
-        print("Sent 'create' message to server")
+            state.keyword_arguments = {"n": 2}
+            message = {
+                "op": "create", 
+                "type": "Barrier", 
+                "name": "b", 
+                "function_name": function_name,
+                "state": make_json_serializable(state),
+                "id": msg_id
+            }
+            
+            msg = json.dumps(message).encode('utf-8')
+            send_object(msg, websocket)
+            
+            print("Sent 'create' message to server")
 
-        # Receive data. This should just be an ACK, as the TCP server will 'ACK' our create() calls.
-        ack = recv_object(websocket)
+            # Receive data. This should just be an ACK, as the TCP server will 'ACK' our create() calls.
+            ack = recv_object(websocket)
 
-        # Just call this directly.
-        client_task(str(1), function_name)
+            # Just call this directly.
+            client_task(str(1), function_name)
+        else:
+            print("Skipping call to create.")
+            client_task(str(2), function_name)
 
         # try:
         #     print("Starting client thread1")
@@ -170,6 +184,8 @@ def client_main(event, context):
         #     print(ex)
         
         # t2.join()
+        websocket.shutdown(socket.SHUT_RDWR)
+        websocket.close()        
 
 def old_handler():
     uri = "PYRO:obj_6addf78ee967485c8f76ff0ef3d0172f@71.191.38.59:25565"
