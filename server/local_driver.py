@@ -1,24 +1,24 @@
-import json
 import uuid
 from threading import Thread
 import cloudpickle 
-import base64 
 import socket
 import uuid 
+import ujson
+import base64
 
-from server.counting_semaphore import CountingSemaphore
-from server.state import State
-from server.util import make_json_serializable, decode_and_deserialize
+from counting_semaphore import CountingSemaphore
+from state import State
+from util import make_json_serializable, decode_and_deserialize
 
-SERVER_IP = ("71.191.38.59",25565)
+SERVER_IP = ("127.0.0.1", 25565)
 
 """
-Lambda Client
--------------
+Local Client
+------------
 
-This is the version of the client code that I've been running within an AWS Lambda function.
+This is the version of the client code that I've been running locally on my Desktop. 
 
-I've updated it to keep it consistent with the changes we've been making.
+This has been kept up-to-date with the rest of the codebase.
 """
 
 def send_object(obj, websocket):
@@ -61,25 +61,25 @@ def recv_object(websocket):
     # Finally, we read the serialized object itself.
     return websocket.recv(incoming_size).strip()
 
-def client_task(taskID, function_name):
-    state = State(ID = function_name)
+def client_task(taskID):
+    state = State(ID = "PyroTest", restart = False, task_id = "Task2")
     websocket = socket.socket()
     websocket.connect(SERVER_IP)
     msg_id = str(uuid.uuid4())
     print(taskID + " calling synchronize PC: " + str(state._ID) + ". Message ID=" +msg_id)
 
     state._pc = 2
+    state.keyword_arguments = {"ID": taskID}
     message = {
         "op": "synchronize_sync", 
         "name": "b", 
         "method_name": "try_wait_b", 
-        "state": base64.b64encode(cloudpickle.dumps(state)).decode('utf-8'), 
-        "keyword_arguments": {"ID": taskID},
+        "state": base64.b64encode(cloudpickle.dumps(state)).decode('utf-8'),
         "id": msg_id
     }
     print("Calling 'synchronize' on the server.")
-    msg = json.dumps(message).encode('utf-8')
-    send_object(msg)
+    msg = ujson.dumps(message).encode('utf-8')
+    send_object(msg, websocket)
     print(taskID + " called synchronize PC: " + str(state._ID))
 
     data = recv_object(websocket)               # Should just be a serialized state object.
@@ -94,73 +94,46 @@ def client_task(taskID, function_name):
         state = state_from_server
         print(str(return_value)) 
 
-def init_state(state):
-    """
-    
-    """
-    pass 
-
-def client_main(event, context):
-    """
-    Main driver method.
-
-    Arguments:
-    ----------
-        context (AWS Context object):
-            See https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
-
-        event (dict):
-            Invocation payload passed by whoever/whatever invoked us.
-    """
-    state = decode_and_deserialize[event["state"]]
-    task_id = state.task_id 
-    print("Task %s has started executing." % task_id)
-
-    if not state.restart:
-        init_state() # Initialize the state variables one time.
-
-    function_name = context.function_name
+def client_main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
-        print("Connecting to " + str(SERVER_IP))
-        websocket.connect(SERVER_IP)
-        print("Succcessfully connected!")
+        websocket.connect(("127.0.0.1", 25565))
         msg_id = str(uuid.uuid4())
-
+        state = State(ID = "PyroTest", restart = False, task_id = "Task1")
         print("Sending 'create' message to server. Message ID=" + msg_id)
+
+        state.keyword_arguments = {
+            "n": 2
+        }
 
         message = {
             "op": "create", 
             "type": "Barrier", 
             "name": "b", 
-            "function_name": function_name,
-            "keyword_arguments": {"n": 2},
+            "state": make_json_serializable(state),
             "id": msg_id
         }
         
-        msg = json.dumps(message).encode('utf-8')
-        send_object(msg)
+        msg = ujson.dumps(message).encode('utf-8')
+        send_object(msg, websocket) # Send to the TCP server.
         
         print("Sent 'create' message to server")
 
         # Receive data. This should just be an ACK, as the TCP server will 'ACK' our create() calls.
-        ack = recv_object()
+        received = str(websocket.recv(1024), "utf-8")
 
-        # Just call this directly.
-        client_task(str(1), function_name)
+        try:
+            print("Starting client thread1")
+            t1 = Thread(target=client_task, args=(str(1),), daemon=True)
+            t1.start()
+        except Exception as ex:
+            print("[ERROR] Failed to start client thread1.")
+            print(ex)
 
-        # try:
-        #     print("Starting client thread1")
-        #     t1 = Thread(target=client_task, args=(str(1),function_name,), daemon=True)
-        #     t1.start()
-        # except Exception as ex:
-        #     print("[ERROR] Failed to start client thread1.")
-        #     print(ex)
-
-        # t1.join()
+        t1.join()
 
         # try:
         #     print("Starting client thread2")
-        #     t2 = Thread(target=client_task, args=(str(2), function_name,), daemon=True)
+        #     t2 = Thread(target=client_task, args=(str(2),), daemon=True)
         #     t2.start()
         # except Exception as ex:
         #     print("[ERROR] Failed to start client thread2.")
@@ -168,30 +141,20 @@ def client_main(event, context):
         
         # t2.join()
 
-def old_handler():
-    uri = "PYRO:obj_6addf78ee967485c8f76ff0ef3d0172f@71.191.38.59:25565"
-    name = "Ben"
+if __name__ == "__main__":
+    client_main()
     
-    try:
-        greeting_maker = Pyro4.Proxy(uri)   # get a Pyro proxy to the greeting object
-    except Exception as ex:
-        print("Got exception as ex: " + str(ex))
-    
-    print("Got proxy")
-    
-    fortune = greeting_maker.get_fortune(name)
-    
-    print(fortune)   # call method normally
-    
-    # TODO implement
-    return {
-        'statusCode': 200,
-        'body': json.dumps(fortune)
-    }
-
-def lambda_handler(event, context):
-    client_main(event, context)
-    return {
-        'statusCode': 200,
-        'body': json.dumps("Hello, world!")
-    }
+"""
+Changes:
+1. Above CP send synchronize pass kwargs parm [ID = taskID]
+2. tcp loop action: create: change **keyword_arguments to keyword_arguments, I think
+3. tcp loop action: synchronize: same kwargs logic as create()
+4. method synchronize() in class Synchronizer:
+    a. add state parm: def synchronize(self, method_name, state, **kwargs):
+    b. get rid of:
+        cb = kwargs["cb"]
+        first = kwargs["first"]
+    c. Change program_counter = kwargs["program_counter"] to
+        program_counter = state._pc
+        state.pc = 10
+"""

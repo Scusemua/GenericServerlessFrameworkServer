@@ -89,7 +89,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("Trying to retrieve existing Synchronizer '%s'" % synchronizer_name)
         synchronizer = tcp_server.synchronizers[synchronizer_name]
 
-        base_name, isTryMethod = self.isTry_and_getMethodName(method_name)
+        base_name, isTryMethod = isTry_and_getMethodName(method_name)
     
         logger.debug("method_name: " + method_name)
         logger.debug("base_name: " + base_name)
@@ -103,7 +103,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         if isTryMethod: 
             # check if synchronize op will block, if yes tell client to terminate then call op
             # rhc: FIX THIS here and in CREATE: let 
-            return_value =  synchronizer.trySynchronize(method_name, **state.keyword_arguments)
+            return_value =  synchronizer.trySynchronize(method_name, state, **state.keyword_arguments)
         
             if return_value == True:   # synchronize op will execute wait so tell client to terminate
                 state.blocking = True 
@@ -156,8 +156,8 @@ class TCPHandler(socketserver.StreamRequestHandler):
             obj (bytes):
                 The already-serialized object that we are sending to a remote entity (presumably an AWS Lambda executor).
         """
-        self.wfile.write(len(obj))                  # Tell the client how many bytes we're sending.
-        self.wfile.write(obj)                       # Then send the object.
+        self.wfile.write(len(obj).to_bytes(2, byteorder='big'))     # Tell the client how many bytes we're sending.
+        self.wfile.write(obj)                                       # Then send the object.
 
     def create_obj(self, message = None):
         """

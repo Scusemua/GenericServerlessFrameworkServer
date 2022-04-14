@@ -96,9 +96,10 @@ class Synchronizer(object):
             _synchronizer_method = getattr(self._synchClass,method_name)
         except Exception as x:
             logger.error("Caught Error >>> %s" % x)
+            raise ValueError("Synchronizer of type %s does not have method called %s. Cannot complete trySynchronize() call." % (self._synchClass, method_name))
 
         myPythonThreadName = "Try_callerThread"+str(ID_arg)
-        restart, returnValue = self.doMethodCall(2, myPythonThreadName, self._synchronizer, self._synchronizer_method, **kwargs)
+        restart, returnValue = self.doMethodCall(2, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
                 
         logger.debug("TtrySynchronize " + " restart " + str(restart))
         logger.debug("trySynchronize " + " returnValue " + str(returnValue))
@@ -138,7 +139,7 @@ class Synchronizer(object):
             function_name = state.id 
             # TODO: Restart the function (invoke it).
             logger.info("Restarting Lambda function %s." % function_name)
-            self.lambda_client.invoke(FunctionName=function_name, InvocationType='Event', Payload=cloudpickle.dumps(state))
+            #self.lambda_client.invoke(FunctionName=function_name, InvocationType='Event', Payload=cloudpickle.dumps(state))
         
         return returnValue
 
