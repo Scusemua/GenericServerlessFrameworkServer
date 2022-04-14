@@ -131,15 +131,15 @@ def client_main():
 
         t1.join()
 
-        # try:
-        #     print("Starting client thread2")
-        #     t2 = Thread(target=client_task, args=(str(2),), daemon=True)
-        #     t2.start()
-        # except Exception as ex:
-        #     print("[ERROR] Failed to start client thread2.")
-        #     print(ex)
+        try:
+            print("Starting client thread2")
+            t2 = Thread(target=client_task, args=(str(2),), daemon=True)
+            t2.start()
+        except Exception as ex:
+            print("[ERROR] Failed to start client thread2.")
+            print(ex)
         
-        # t2.join()
+        t2.join()
 
 if __name__ == "__main__":
     client_main()
