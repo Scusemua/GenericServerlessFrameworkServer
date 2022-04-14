@@ -10,6 +10,8 @@ import boto3
 import ujson
 import cloudpickle
 
+from client import Client 
+
 import logging 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -35,6 +37,7 @@ class Synchronizer(object):
         self._name = "Synchronizer"
         self.threadID = 0
         self.lambda_client = boto3.client("lambda", region_name = aws_region)
+        self.client = Client()
 
     #def init(self, synchronizer_class_name = None, synchronizer_object_name = None, value):
 
@@ -101,7 +104,7 @@ class Synchronizer(object):
         myPythonThreadName = "Try_callerThread"+str(ID_arg)
         restart, returnValue = self.doMethodCall(2, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs)
                 
-        logger.debug("TtrySynchronize " + " restart " + str(restart))
+        logger.debug("trySynchronize " + " restart " + str(restart))
         logger.debug("trySynchronize " + " returnValue " + str(returnValue))
         
         return returnValue
@@ -139,6 +142,7 @@ class Synchronizer(object):
             function_name = state.id 
             # TODO: Restart the function (invoke it).
             logger.info("Restarting Lambda function %s." % function_name)
+            self.client.invoke(do_create = False, state = state)
             #self.lambda_client.invoke(FunctionName=function_name, InvocationType='Event', Payload=cloudpickle.dumps(state))
         
         return returnValue

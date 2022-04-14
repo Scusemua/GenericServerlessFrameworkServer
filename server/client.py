@@ -16,6 +16,8 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
+from util import make_json_serializable
+
 function_name = "PyroTest"
 
 class Client(object):
@@ -23,11 +25,12 @@ class Client(object):
         self.client_id = str(uuid.uuid4)
         self.lambda_client = boto3.client("lambda", region_name = "us-east-1")
 
-    def invoke(self):
-        state = State(id = "PyroTest", restart = False, task_id = str(uuid.uuid4()))
+    def invoke(self, do_create = False, state = None):
+        _state = state or State(ID = "PyroTest", restart = False, task_id = str(uuid.uuid4()))
         payload = {
-            "state": state 
+            "state": make_json_serializable(_state),
+            "do_create": do_create
         }
         self.lambda_client.invoke(FunctionName = function_name, InvocationType = 'Event', Payload = ujson.dumps(payload))
 
-        logger.debug("Invoked AWS Lambda function '%s'" % function_name)
+        logger.debug("Invoked AWS Lambda function '%s' with do_create=%s" % (function_name, str(do_create)))

@@ -95,10 +95,15 @@ class TCPHandler(socketserver.StreamRequestHandler):
         logger.debug("base_name: " + base_name)
         logger.debug("isTryMethod: " + str(isTryMethod))    
         
-        try:
-            _synchronizer_method = getattr(self._synchClass,method_name)
-        except Exception as x:
-            logger.debug("Caught Error >>> %s" % x)
+        # COMMENTED OUT:
+        # The TCP server does not have a '_synchClass' variable, so that causes an error to be thrown.
+        # We aren't even using the `_synchronizer_method` variable anywhere though, so I've just
+        # commented this out. I don't think we need it?
+        
+        # try:
+        #     _synchronizer_method = getattr(self._synchClass, method_name)
+        # except Exception as x:
+        #     logger.debug("Caught Error >>> %s" % x)
 
         if isTryMethod: 
             # check if synchronize op will block, if yes tell client to terminate then call op
