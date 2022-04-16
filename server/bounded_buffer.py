@@ -67,7 +67,7 @@ class BoundedBuffer(MonitorSU):
 def taskD(b : BoundedBuffer):
     time.sleep(1)
     logger.debug("Calling deposit")
-    b.deposit("A")
+    b.deposit(value = "A")
     logger.debug("Successfully called deposit")
 
 def taskW(b : BoundedBuffer):

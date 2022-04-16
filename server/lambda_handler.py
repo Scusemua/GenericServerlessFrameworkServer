@@ -190,10 +190,12 @@ def client_main(event, context):
         if do_create:
             print("Sending 'create' message to server. Message ID=" + msg_id)
 
-            state.keyword_arguments = {"n": 2}
+            #state.keyword_arguments = {"n": 2}
+            state.keyword_arguments = {"n": 1}
             message = {
                 "op": "create", 
-                "type": "Barrier", 
+                #"type": "Barrier", 
+                "type": "BoundedBuffer", 
                 "name": "b", 
                 "function_name": function_name,
                 "state": make_json_serializable(state),
