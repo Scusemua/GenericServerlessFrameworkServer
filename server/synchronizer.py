@@ -31,7 +31,7 @@ aws_region = 'us-east-1'
 @Pyro4.behavior(instance_mode="single")
 class Synchronizer(object):
 
-    synchronizers = {"barrier", "Barrier", "semaphore", "Semaphore"}
+    synchronizers = {"barrier", "Barrier", "semaphore", "Semaphore", "bounded_buffer", "BoundedBuffer"}
     
     def __init__(self):
         self._name = "Synchronizer"
@@ -76,7 +76,6 @@ class Synchronizer(object):
 
         logger.debug ("Called _synchronizer init")
         return 0
-
 
     #def synchronize(self, method_name, ID, program_counter):#cb, first):
     #Note: will not be using callback, ID pc and first are part of state

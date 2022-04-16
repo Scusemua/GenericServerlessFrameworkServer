@@ -30,19 +30,24 @@ class BoundedBuffer(MonitorSU):
         self._out=0
 
 
-    def deposit(self, value=None, **kwargs):
+    def deposit(self, **kwargs):
+        """
+        Store a value.
+        """
         super().enter_monitor(method_name="deposit")
         logger.debug(" deposit() entered monitor, len(self._notFull) ="+str(len(self._notFull))+",self._capacity="+str(self._capacity))
         logger.debug(" deposit() entered monitor, len(self._notEmpty) ="+str(len(self._notEmpty))+",self._capacity="+str(self._capacity))
+        value = kwargs["value"]
+        logger.debug("Value to deposit: " + str(value))
         if self._fullSlots==self._capacity:
             self._notFull.wait_c()
+
         self._buffer.insert(self._in,value)
         self._in=(self._in+1) % int(self._capacity)
         self._fullSlots+=1
         self._notEmpty.signal_c_and_exit_monitor()
         threading.current_thread()._returnValue=1
         return 1
-
 
     def withdraw(self, **kwargs):
         super().enter_monitor(method_name = "withdraw")
