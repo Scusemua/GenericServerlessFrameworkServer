@@ -146,8 +146,11 @@ class TCPHandler(socketserver.StreamRequestHandler):
         incoming_size = int.from_bytes(incoming_size, 'big')
 
         if incoming_size == 0:
-            print("[WARNING] Incoming message size is 0.")
-            traceback.print_stack(file=sys.stdout)
+            logger.debug("Incoming size is 0. Client is expected to have disconnected.")
+            return None 
+        
+        if incoming_size < 0:
+            logger.error("Incoming size < 0: " + incoming_size + ". An error might have occurred...")
             return None 
 
         logger.info("Will receive another message of size %d bytes" % incoming_size)
