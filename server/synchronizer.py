@@ -32,6 +32,12 @@ aws_region = 'us-east-1'
 class Synchronizer(object):
 
     synchronizers = {"barrier", "Barrier", "semaphore", "Semaphore", "bounded_buffer", "BoundedBuffer"}
+
+    # Mapping from class to the file in which it is defined.
+    file_map = {
+        "Barrier": "barrier",
+        "BoundedBuffer": "bounded_buffer"
+    }
     
     def __init__(self):
         self._name = "Synchronizer"
@@ -45,23 +51,32 @@ class Synchronizer(object):
     #def init(self, synchronizer_class_name = None, synchronizer_object_name = None, **kwargs):
     def create(self, synchronizer_class_name, synchronizer_object_name, **kwargs):
         # where init call by Client is init(“Barrier”,”b”,[‘n’,2]): and kwargs passed to Barrier.init
-        if not synchronizer_class_name in self.synchronizers:
-            logger.debug("Error: invalid synchronizer class name.")
+        if not synchronizer_class_name in Synchronizer.synchronizers:
+            logger.error("Invalid synchronizer class name: '%s'" % synchronizer_class_name)
+            raise ValueError("Invalid synchronizer class name: '%s'" % synchronizer_class_name)
             # throw a remote exception? remote back to client?
+        
+        if not synchronizer_class_name in Synchronizer.file_map:
+            logger.error("Could not find source file for Synchronizer '%s'" % synchronizer_class_name)
+            raise ValueError("Could not find source file for Synchronizer '%s'" % synchronizer_class_name)
 
         #e.g. “Barrier_b”
         self._synchronizer_name = (str(synchronizer_class_name) + '_' + str(synchronizer_object_name))
-        logger.debug("self._synchronizer_name: " + self._synchronizer_name)
+        logger.debug("Creating synchronizer with name '%s'"  % self._synchronizer_name)
         
-        logger.debug("get MyClass")
+        logger.debug("Attempting to locate class '%s'" % synchronizer_class_name)
 
         # locate() described in: https://stackoverflow.com/a/24815361 - shows lots of other things to try, which didn't work for me
         # I got it from this simple example: https://stackoverflow.com/a/55968374
-        self._synchClass = locate("barrier.Barrier")
-        logger.debug("got MyClass")
+        
+        src_file = Synchronizer.file_map[synchronizer_class_name]
+        self._synchClass = locate("%s.%s" % (src_file, synchronizer_class_name))
+
+        #logger.debug("got MyClass")
         self._synchronizer = self._synchClass()
         if self._synchronizer == None:
-            logger.debug("null synchronizer")
+            logger.error("Failed to locate and create synchronizer of type %s" % synchronizer_class_name)
+            return -1
         
         #e.g. "b"
         self._synchronizer_object_name = synchronizer_object_name
@@ -115,8 +130,9 @@ class Synchronizer(object):
         
         try:
             _synchronizer_method = getattr(self._synchClass,method_name)
-        except Exception as x:
-            logger.error("Caught Error >>> %s" % x)
+        except Exception as ex:
+            logger.error("Failed to find method '%s' on object '%s'." % (method_name, self._synchClass))
+            raise ex
         
         myPythonThreadName = "NotTrycallerThread"+str(self.threadID)
         restart, returnValue = self.doMethodCall(1, myPythonThreadName, self._synchronizer, _synchronizer_method, **kwargs) 

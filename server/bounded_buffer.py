@@ -22,6 +22,7 @@ class BoundedBuffer(MonitorSU):
 
     def init(self, **kwargs):
         self._fullSlots=0
+        self._capacity = kwargs["n"]
         self._buffer=[]
         self._notFull=super().get_condition_variable(condition_name="notFull")
         self._notEmpty=super().get_condition_variable(condition_name="notEmpty")
@@ -40,12 +41,14 @@ class BoundedBuffer(MonitorSU):
         value = kwargs["value"]
         logger.debug("Value to deposit: " + str(value))
         if self._fullSlots==self._capacity:
+            logger.debug("Full slots (%d) is equal to capacity (%d). Calling wait_c()." % (self._fullSlots, self._capacity))
             self._notFull.wait_c()
 
         self._buffer.insert(self._in,value)
         self._in=(self._in+1) % int(self._capacity)
         self._fullSlots+=1
         self._notEmpty.signal_c_and_exit_monitor()
+        threading.current_thread()._restart = False
         threading.current_thread()._returnValue=1
         return 1
 
@@ -59,6 +62,7 @@ class BoundedBuffer(MonitorSU):
         value=self._buffer[self._out]
         self._out=(self._out+1) % int(self._capacity)
         self._fullSlots-=1
+        threading.current_thread()._restart = False
         threading.current_thread()._returnValue=value
         self._notFull.signal_c_and_exit_monitor()
         return value

@@ -62,52 +62,53 @@ def recv_object(websocket):
     # Finally, we read the serialized object itself.
     return websocket.recv(incoming_size).strip()
 
-def bounded_buffer_task(taskID, function_name):
+def bounded_buffer_task(taskID, function_name, websocket):
     state = State(ID = function_name)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
-        websocket.connect(SERVER_IP)
-        msg_id = str(uuid.uuid4())
-        print(taskID + " calling synchronize_async PC: " + str(state._ID) + ". Message ID=" +msg_id)
+    #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
+    #    websocket.connect(SERVER_IP)
+    msg_id1 = str(uuid.uuid4())
+    print(taskID + " calling synchronize_async PC: " + str(state._ID) + ". Message ID=" +msg_id1)
 
-        state.keyword_arguments = {
-            "ID": taskID,
-            "value": "hello, world!"        # Used by the bounded buffer test.
-        }
-        state._pc = 2
-        message1 = {
-            "op": "synchronize_async", 
-            "name": "b", 
-            "method_name": "deposit",       # Bounded buffer test.
-            "state": make_json_serializable(state),
-            "id": msg_id
-        }
-        print("Calling 'synchronize_async' - 'deposit' on the server.")
-        msg1 = json.dumps(message1).encode('utf-8')
-        send_object(msg1, websocket)
-        print(taskID + " called synchronize_async, PC: " + str(state._ID))
+    state.keyword_arguments = {
+        "ID": taskID,
+        "value": "hello, world!"        # Used by the bounded buffer test.
+    }
+    state._pc = 2
+    message1 = {
+        "op": "synchronize_async", 
+        "name": "b", 
+        "method_name": "deposit",       # Bounded buffer test.
+        "state": make_json_serializable(state),
+        "id": msg_id1
+    }
+    print("Calling 'synchronize_async' - 'deposit' on the server. MessageID=" + msg_id1)
+    msg1 = json.dumps(message1).encode('utf-8')
+    send_object(msg1, websocket)
+    print(taskID + " called synchronize_async, PC: " + str(state._ID))
 
-        message2 = {
-            "op": "synchronize_sync", 
-            "name": "b", 
-            "method_name": "withdrawl",       # Bounded buffer test.
-            "state": make_json_serializable(state),
-            "id": msg_id
-        }
+    msg_id2 = str(uuid.uuid4())
+    message2 = {
+        "op": "synchronize_sync", 
+        "name": "b", 
+        "method_name": "withdraw",       # Bounded buffer test.
+        "state": make_json_serializable(state),
+        "id": msg_id2
+    }
 
-        print("Calling 'synchronize_sync' - 'withdrawl' on the server.")
-        msg2 = json.dumps(message2).encode('utf-8')
-        send_object(msg2, websocket)
-        print(taskID + " called synchronize_sync, PC: " + str(state._ID))        
+    print("Calling 'synchronize_sync' - 'withdraw' on the server. MessageID=" + msg_id2)
+    msg2 = json.dumps(message2).encode('utf-8')
+    send_object(msg2, websocket)
+    print(taskID + " called synchronize_sync, PC: " + str(state._ID))        
 
-        data = recv_object(websocket)               # Should just be a serialized state object.
-        state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
+    data = recv_object(websocket)               # Should just be a serialized state object.
+    state_from_server = cloudpickle.loads(data) # `state_from_server` is of type State
 
-        return_value = state_from_server.return_value
-        state = state_from_server
-        print(str(return_value)) 
-        print("=== FINISHED ===")
-        websocket.shutdown(socket.SHUT_RDWR)
-        websocket.close()            
+    return_value = state_from_server.return_value
+    state = state_from_server
+    print(str(return_value)) 
+    print("=== FINISHED ===")
+    websocket.shutdown(socket.SHUT_RDWR)
+    websocket.close()            
 
 def client_task(taskID, function_name):
     state = State(ID = function_name)
@@ -212,11 +213,11 @@ def client_main(event, context):
 
             # Just call this directly.
             #client_task(str(1), function_name)
-            bounded_buffer_task(str(1), function_name)
+            bounded_buffer_task(str(1), function_name, websocket)
         else:
             print("Skipping call to create.")
             #client_task(str(2), function_name)
-            bounded_buffer_task(str(1), function_name)
+            bounded_buffer_task(str(1), function_name, websocket)
 
         # try:
         #     print("Starting client thread1")

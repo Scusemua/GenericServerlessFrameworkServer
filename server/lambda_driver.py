@@ -9,6 +9,6 @@ c = Client()
 
 c.invoke(do_create = True)
 
-time.sleep(1)
+#time.sleep(1)
 
-c.invoke(do_create = False)
+#c.invoke(do_create = False)

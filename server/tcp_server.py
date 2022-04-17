@@ -13,6 +13,7 @@ import socket
 import socketserver
 import threading
 import traceback
+import json 
 
 from synchronizer import Synchronizer
 from util import make_json_serializable, decode_and_deserialize
@@ -39,29 +40,32 @@ class TCPHandler(socketserver.StreamRequestHandler):
         """
         TCP handler for incoming requests from AWS Lambda functions.
         """
-        logger.info("Recieved one request from {}".format(self.client_address[0]))
+        while True:
+            logger.info("[HANDLER] Recieved one request from {}".format(self.client_address[0]))
 
-        self.action_handlers = {
-            "create": self.create_obj,
-            "setup": self.setup_server,
-            "synchronize_async": self.synchronize_async,
-            "synchronize_sync": self.synchronize_sync
-        }
-        logger.info("Thread Name:{}".format(threading.current_thread().name))
-
-        try:
-            data = self.recv_object()
-            json_message = ujson.loads(data)
-            message_id = json_message["id"]
-            logger.debug("Received message (size=%d bytes) from client %s with ID=%s" % (len(data), self.client_address[0], message_id))
-            action = json_message.get("op", None)
-            resp = {
-                "op": "ack"
+            self.action_handlers = {
+                "create": self.create_obj,
+                "setup": self.setup_server,
+                "synchronize_async": self.synchronize_async,
+                "synchronize_sync": self.synchronize_sync
             }
-            self.action_handlers[action](message = json_message)
-        except Exception as ex:
-            logger.error(ex)
-            logger.error(traceback.format_exc())
+            #logger.info("Thread Name:{}".format(threading.current_thread().name))
+
+            try:
+                data = self.recv_object()
+
+                if data is None:
+                    logger.warning("recv_object() returned None. Exiting handler now.")
+                    return 
+
+                json_message = ujson.loads(data)
+                message_id = json_message["id"]
+                logger.debug("[HANDLER] Received message (size=%d bytes) from client %s with ID=%s" % (len(data), self.client_address[0], message_id))
+                action = json_message.get("op", None)
+                self.action_handlers[action](message = json_message)
+            except Exception as ex:
+                logger.error(ex)
+                logger.error(traceback.format_exc())
 
     def _get_synchronizer_name(self, obj_type = None, name = None):
         """
@@ -80,7 +84,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
             message (dict):
                 The payload from the AWS Lambda function.
         """
-        logger.debug("server.synchronize_sync() called.")
+        logger.debug("[HANDLER] server.synchronize_sync() called.")
         obj_name = message['name']
         method_name = message['method_name']
         state = decode_and_deserialize(message["state"])
@@ -183,7 +187,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
             message (dict):
                 The payload from the AWS Lambda function.
         """        
-        logger.debug("server.create() called.")
+        logger.debug("[HANDLER] server.create() called.")
         type_arg = message["type"]
         name = message["name"]
         state = decode_and_deserialize(message["state"])
@@ -193,7 +197,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
         synchronizer.create(type_arg, name, **state.keyword_arguments)
         
         synchronizer_name = self._get_synchronizer_name(obj_type = type_arg, name = name)
-        logger.debug("Caching new Synchronizer with name '%s'" % synchronizer_name)
+        logger.debug("Caching new Synchronizer of type '%s' with name '%s'" % (type_arg, synchronizer_name))
         tcp_server.synchronizers[synchronizer_name] = synchronizer # Store Synchronizer object.
 
         resp = {
@@ -204,8 +208,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
         # Write ACK back to client. #
         #############################
         logger.info("Sending ACK to client %s for CREATE operation." % self.client_address[0])
-        self.wfile.write(ujson.dumps(resp).encode('utf-8'))
-        logger.info("Sent ACK to client %s for CREATE operation." % self.client_address[0])
+        resp_encoded = json.dumps(resp).encode('utf-8')
+        self.send_serialized_object(resp_encoded)
+        logger.info("Sent ACK of size %d bytes to client %s for CREATE operation." % (len(resp_encoded), self.client_address[0]))
 
     def close_obj(self, message = None):
         """
@@ -235,7 +240,7 @@ class TCPHandler(socketserver.StreamRequestHandler):
             message (dict):
                 The payload from the AWS Lambda function.
         """        
-        logger.debug("server.synchronize_async() called.")
+        logger.debug("[HANDLER] server.synchronize_async() called.")
         obj_name = message['name']
         method_name = message['method_name']
         state = decode_and_deserialize(message["state"])
