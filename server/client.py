@@ -26,6 +26,17 @@ class Client(object):
         self.lambda_client = boto3.client("lambda", region_name = "us-east-1")
 
     def invoke(self, do_create = False, state = None):
+        """
+        Invoke an AWS Lambda function.
+
+        Arguments:
+            do_create (bool):
+                If True, the Executor should call create(). Otherwise, the Executor does not call create().
+            
+            state (State):
+                If this is non-None, then we pass this to the Lambda function.
+                If this is None, then we create the State object in this method and pass it to the Lambda.
+        """
         _state = state or State(ID = "PyroTest", restart = False, task_id = str(uuid.uuid4()))
         payload = {
             "state": make_json_serializable(_state),
