@@ -20,7 +20,7 @@ from util import make_json_serializable
 
 function_name = "PyroTest"
 
-class Client(object):
+class Invoker(object):
     def __init__(self):
         self.client_id = str(uuid.uuid4)
         self.lambda_client = boto3.client("lambda", region_name = "us-east-1")

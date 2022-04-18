@@ -1,13 +1,13 @@
 import time 
-from client import Client
+from invoker import Invoker
 
 """
 Invokes remote executors. This is used for running the test application using actual Lambdas, whereas local_driver.py is for running it all locally.
 """
 
-c = Client()
+invoker = Invoker()
 
-c.invoke(do_create = True)
+invoker.invoke(do_create = True)
 
 #time.sleep(1)
 
