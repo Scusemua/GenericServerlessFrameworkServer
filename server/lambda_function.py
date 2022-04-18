@@ -110,7 +110,7 @@ def bounded_buffer_task(taskID, function_name, websocket):
     websocket.shutdown(socket.SHUT_RDWR)
     websocket.close()            
 
-def client_task(taskID, function_name):
+def try_wait_b_task(taskID, function_name):
     state = State(ID = function_name)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as websocket:
         websocket.connect(SERVER_IP)
@@ -156,10 +156,11 @@ def init_state(state):
     """
     pass 
 
-def client_main(event, context):
+def lambda_handler(event, context):
     """
-    Main driver method.
+    This is the function that runs when the AWS Lambda starts.
 
+    This is like our main method.
     Arguments:
     ----------
         context (AWS Context object):
@@ -212,16 +213,16 @@ def client_main(event, context):
             ack = recv_object(websocket)
 
             # Just call this directly.
-            #client_task(str(1), function_name)
+            #try_wait_b_task(str(1), function_name)
             bounded_buffer_task(str(1), function_name, websocket)
         else:
             print("Skipping call to create.")
-            #client_task(str(2), function_name)
+            #try_wait_b_task(str(2), function_name)
             bounded_buffer_task(str(1), function_name, websocket)
 
         # try:
         #     print("Starting client thread1")
-        #     t1 = Thread(target=client_task, args=(str(1),function_name,), daemon=True)
+        #     t1 = Thread(target=try_wait_b_task, args=(str(1),function_name,), daemon=True)
         #     t1.start()
         # except Exception as ex:
         #     print("[ERROR] Failed to start client thread1.")
@@ -231,7 +232,7 @@ def client_main(event, context):
 
         # try:
         #     print("Starting client thread2")
-        #     t2 = Thread(target=client_task, args=(str(2), function_name,), daemon=True)
+        #     t2 = Thread(target=try_wait_b_task, args=(str(2), function_name,), daemon=True)
         #     t2.start()
         # except Exception as ex:
         #     print("[ERROR] Failed to start client thread2.")
@@ -239,31 +240,8 @@ def client_main(event, context):
         
         # t2.join()
         websocket.shutdown(socket.SHUT_RDWR)
-        websocket.close()        
-
-def old_handler():
-    uri = "PYRO:obj_6addf78ee967485c8f76ff0ef3d0172f@71.191.38.59:25565"
-    name = "Ben"
-    
-    try:
-        greeting_maker = Pyro4.Proxy(uri)   # get a Pyro proxy to the greeting object
-    except Exception as ex:
-        print("Got exception as ex: " + str(ex))
-    
-    print("Got proxy")
-    
-    fortune = greeting_maker.get_fortune(name)
-    
-    print(fortune)   # call method normally
-    
-    # TODO implement
-    return {
-        'statusCode': 200,
-        'body': json.dumps(fortune)
-    }
-
-def lambda_handler(event, context):
-    client_main(event, context)
+        websocket.close() 
+        
     return {
         'statusCode': 200,
         'body': json.dumps("Hello, world!")
