@@ -10,7 +10,7 @@ from counting_semaphore import CountingSemaphore
 from state import State
 from util import make_json_serializable, decode_and_deserialize
 
-SERVER_IP = ("71.191.38.59",25565)
+SERVER_IP = ("71.191.38.59", 25565)
 
 """
 Lambda Client

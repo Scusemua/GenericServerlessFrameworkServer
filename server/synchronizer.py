@@ -164,6 +164,7 @@ class Synchronizer(object):
 
     def doMethodCall(self, PythonThreadID, myName, synchronizer, synchronizer_method, **kwargs):
         """
+        
         Call a method.
 
         Arguments:
